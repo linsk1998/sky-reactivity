@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"target": "ES2021",
+		"lib": [
+			"ES2015"
+		],
+		"strict": false,
+		"experimentalDecorators": true,
+		"useDefineForClassFields": false,
+		"importHelpers": true,
+		"noEmitHelpers": true
+	},
+	"include": [
+		"src/**/*"
+	]
+}
