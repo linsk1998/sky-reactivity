@@ -1,3 +1,6 @@
 .vscode
 src
 test
+*.log
+.editorconfig
+rollup.config.js
