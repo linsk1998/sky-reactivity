@@ -1,6 +1,6 @@
-import type { Observable } from "./observable";
+import type { Signal } from "./signal";
 
-export var relation = new WeakMap<any, Map<Observable<any>, any>>;
+export var relation = new WeakMap<any, Map<Signal<any>, any>>;
 
 export function stop(key: any) {
 	var rel = relation.get(key);
@@ -11,6 +11,6 @@ export function stop(key: any) {
 	}
 }
 
-function forEachObs(key: any, ob: Observable<any>) {
+function forEachObs(key: any, ob: Signal<any>) {
 	ob.unobserve(key);
 }

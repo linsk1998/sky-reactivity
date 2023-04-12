@@ -1,10 +1,10 @@
 import { describe, it } from "mocha";
 import { assert } from "chai";
-import { effect, stop, Observable, Computed, action } from "../dist/sky-reactivity.property.esnext.mjs";
+import { effect, stop, Signal, Computed, batch } from "../dist/sky-reactivity.proxy.esnext.mjs";
 
 describe("box", function() {
-	it("observable", function() {
-		var box = new Observable(1);
+	it("signal", function() {
+		var box = new Signal(1);
 		assert.equal(box.get(), 1);
 		var key = {};
 		var i = 0;
@@ -24,7 +24,7 @@ describe("box", function() {
 	});
 	it("effect", function() {
 		var key = {};
-		var box = new Observable(1);
+		var box = new Signal(1);
 		var i = 0;
 		var v = effect(key, () => box.get(), () => {
 			i++;
@@ -44,7 +44,7 @@ describe("box", function() {
 	});
 	it("computed", function() {
 		var key = {};
-		var box = new Observable(1);
+		var box = new Signal(1);
 		var computed = new Computed(() => box.get() * 2);
 		assert.equal(computed.get(), 2);
 		var i = 0;
@@ -78,11 +78,23 @@ describe("box", function() {
 		box.set(7);
 		assert.equal(i, 2);
 		assert.equal(computed.get(), 14);
+
+		var i2 = 0;
+		var box2 = new Signal(1);
+		var computed2 = new Computed(() => {
+			i2++;
+			return box2.get() * 2;
+		});
+		assert.equal(i2, 0);
+		computed2.get();
+		assert.equal(i2, 1);
+		box2.set(2);
+		assert.equal(i2, 1);
 	});
 	it("action", function() {
 		var key1 = {};
 		var key2 = {};
-		var box = new Observable(1);
+		var box = new Signal(1);
 		var computed = new Computed(() => box.get() * 2);
 		var i = 0, j = 0;
 		box.observe(key1, () => {
@@ -95,7 +107,7 @@ describe("box", function() {
 		assert.equal(j, 0);
 		assert.equal(box.get(), 1);
 		assert.equal(computed.get(), 2);
-		action(() => {
+		batch(() => {
 			assert.equal(i, 0);
 			assert.equal(j, 0);
 			box.set(1);

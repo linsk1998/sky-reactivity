@@ -18,3 +18,12 @@ export function untrack() {
 	currentKey = keyStack[keyStack.length - 1];
 	currentCallback = callbackStack[callbackStack.length - 1];
 }
+
+export function effect(key: any, collect: Function, callback: Function) {
+	try {
+		track(key, callback);
+		return collect.call(key);
+	} finally {
+		untrack();
+	}
+}

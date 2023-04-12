@@ -1,9 +1,9 @@
-import { collectCallback, deep } from "./action";
+import { collectCallback, deep } from "./batch";
 import { notify } from "./notify";
 import { relation } from "./stop";
-import { currentCallback, currentKey } from "./track";
+import { currentCallback, currentKey } from "./effect";
 
-export class Observable<T>{
+export class Signal<T>{
 	protected _callbacks = new Map<any, Function>();
 	protected _value: T;
 	constructor(initValue?: T) {
@@ -22,8 +22,10 @@ export class Observable<T>{
 		return this._value;
 	}
 	public set(value: T) {
-		this._value = value;
-		this.notify();
+		if(this._value !== value) {
+			this._value = value;
+			this.notify();
+		}
 	}
 	protected notify() {
 		if(deep) {
@@ -40,6 +42,6 @@ export class Observable<T>{
 	}
 }
 
-export function observable<T>(initValue: T): Observable<T> {
-	return new Observable(initValue);
+export function signal<T>(initValue: T): Signal<T> {
+	return new Signal(initValue);
 }

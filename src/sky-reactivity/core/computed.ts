@@ -1,8 +1,8 @@
 import { effect } from "./effect";
-import { Observable } from "./observable";
+import { Signal } from "./signal";
 import { stop } from "./stop";
 
-export class Computed<T> extends Observable<T> {
+export class Computed<T> extends Signal<T> {
 	protected getter: () => T;
 	protected setter?: (value: T) => void;
 	protected hasCache = false;
