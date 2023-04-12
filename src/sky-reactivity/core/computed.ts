@@ -32,3 +32,7 @@ export class Computed<T> extends Signal<T> {
 		}
 	}
 }
+
+export function computed<T>(getter: () => T, setter?: (value: T) => void): Computed<T> {
+	return new Computed(getter, setter);
+}
