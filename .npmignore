@@ -4,3 +4,4 @@ test
 *.log
 .editorconfig
 rollup.config.js
+tsconfig.json
