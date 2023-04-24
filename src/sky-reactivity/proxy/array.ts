@@ -7,11 +7,11 @@ const LENGTH = Symbol();
 const REACTIVE = Symbol();
 
 export function array<T>(arr: T[], reactive: Function): ReactiveArray<T> {
+	var i = arr.length;
 	var r = Object.create(ReactiveArray.prototype);
 	r[SIGNALS] = new Map();
-	r[LENGTH] = new Signal(arr.length);
+	r[LENGTH] = new Signal(i);
 	r[REACTIVE] = reactive;
-	var i = r.length = arr.length;
 	while(i-- > 0) {
 		r[i] = reactive(arr[i]) as any;
 	}
@@ -22,18 +22,16 @@ export class ReactiveArray<T = any> {
 	private [SIGNALS]: Map<number, Signal<T>>;
 	private [LENGTH]: Signal<number>;
 	private [REACTIVE]: (item: any) => any;
-	private _length: number;
 
 	public get length(): number {
 		return this[LENGTH].get();
 	}
 	public set length(v: number) {
-		this._length = v;
 		this[LENGTH].set(v);
 	}
 
 	public at(n: number): T {
-		var r = n < 0 ? this[n + this._length] : this[n];
+		var r = n < 0 ? this[n + this[LENGTH].value] : this[n];
 		var map = this[SIGNALS];
 		var box = map.get(n);
 		if(!box) {

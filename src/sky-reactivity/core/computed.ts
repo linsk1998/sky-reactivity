@@ -16,7 +16,7 @@ export class Computed<T> extends Signal<T> {
 			return super.get();
 		}
 		stop(this);
-		this._value = effect(this, this.getter, this.onChange);
+		this.value = effect(this, this.getter, this.onChange);
 		this.hasCache = true;
 		return super.get();
 	}

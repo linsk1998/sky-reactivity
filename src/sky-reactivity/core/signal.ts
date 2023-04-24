@@ -5,9 +5,9 @@ import { currentCallback, currentKey } from "./effect";
 
 export class Signal<T>{
 	protected _callbacks = new Map<any, Function>();
-	protected _value: T;
+	public value: T;
 	constructor(initValue?: T) {
-		this._value = initValue;
+		this.value = initValue;
 	}
 	public get(): T {
 		if(currentKey) {
@@ -19,11 +19,11 @@ export class Signal<T>{
 			}
 			rel.set(this, currentKey);
 		}
-		return this._value;
+		return this.value;
 	}
 	public set(value: T) {
-		if(this._value !== value) {
-			this._value = value;
+		if(this.value !== value) {
+			this.value = value;
 			this.notify();
 		}
 	}

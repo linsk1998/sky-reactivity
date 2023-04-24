@@ -7,11 +7,11 @@ const REACTIVE = '@@REACTIVE';
 
 
 export function array(arr: any[], reactive: Function) {
+	var i = arr.length;
 	var r = Object.create(ReactiveArray.prototype);
 	r[SIGNALS] = new Map();
-	r[LENGTH] = new Signal(0);
+	r[LENGTH] = new Signal(i);
 	r[REACTIVE] = reactive;
-	var i = r.length = arr.length;
 	while(i-- > 0) {
 		r[i] = reactive(arr[i]) as any;
 	}
@@ -27,7 +27,6 @@ Object.defineProperty(ReactiveArray.prototype, 'length', {
 		return this[LENGTH].get();
 	},
 	set: function(value) {
-		this._length = value;
 		this[LENGTH].set(value);
 	},
 	enumerable: false,
@@ -35,7 +34,7 @@ Object.defineProperty(ReactiveArray.prototype, 'length', {
 });
 
 ReactiveArray.prototype.at = function(n) {
-	var r = n < 0 ? this[n + this._length] : this[n];
+	var r = n < 0 ? this[n + this[LENGTH].value] : this[n];
 	var map = this[SIGNALS];
 	var box = map.get(n);
 	if(!box) {
@@ -169,4 +168,31 @@ ReactiveArray.prototype.splice = function() {
 	} finally {
 		batchEnd();
 	}
+};
+
+ReactiveArray.prototype.map = function() {
+	var reactive = this[REACTIVE];
+	var r = Array.prototype.map.apply(this, arguments);
+	return array(r, reactive);
+};
+
+ReactiveArray.prototype.filter = function() {
+	var reactive = this[REACTIVE];
+	var r = Array.prototype.filter.apply(this, arguments);
+	return array(r, reactive);
+};
+
+ReactiveArray.prototype.concat = function() {
+	var reactive = this[REACTIVE];
+	var r = new ReactiveArray();
+	var l = 0;
+	for(var i = 0; i <= arguments.length; i++) {
+		var arr = arguments[i];
+		for(var j = 0; j <= arguments.length; j++) {
+			r[l] = reactive(arr[j]);
+			l++;
+		}
+	}
+	r.length = l;
+	return r;
 };
