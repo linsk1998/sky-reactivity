@@ -1,4 +1,4 @@
-node_modules
-dist
-types
+/node_modules
+/dist
+/types
 *.log

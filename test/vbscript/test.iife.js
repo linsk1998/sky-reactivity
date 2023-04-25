@@ -69,6 +69,156 @@
 	  window.WeakMap = WeakMap$1;
 	}
 
+	var Object$1 = window.Object;
+
+	var dontEnums = ["toString", "toLocaleString", "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"];
+
+	// from core-js
+	var GT = '>';
+	var LT = '<';
+	var SCRIPT = 'script';
+	function scriptTag(content) {
+	  return LT + SCRIPT + GT + content + LT + '/' + SCRIPT + GT;
+	}
+
+	// Create object with fake `null` prototype: use ActiveX Object with cleared prototype
+	function NullProtoObjectViaActiveX(activeXDocument) {
+	  activeXDocument.write(scriptTag(''));
+	  activeXDocument.close();
+	  var temp = activeXDocument.parentWindow.Object;
+	  activeXDocument = null; // avoid memory leak
+	  return temp;
+	}
+
+	// Create object with fake `null` prototype: use iframe Object with cleared prototype
+	function NullProtoObjectViaIFrame() {
+	  // Thrash, waste and sodomy: IE GC bug
+	  var iframe = documentCreateElement('iframe');
+	  var JS = 'java' + SCRIPT + ':';
+	  var iframeDocument;
+	  iframe.style.display = 'none';
+	  html.appendChild(iframe);
+	  // https://github.com/zloirock/core-js/issues/475
+	  iframe.src = String(JS);
+	  iframeDocument = iframe.contentWindow.document;
+	  iframeDocument.open();
+	  iframeDocument.write(scriptTag('document.F=Object'));
+	  iframeDocument.close();
+	  return iframeDocument.F;
+	}
+
+	// Check for document.domain and active x support
+	// No need to use active x approach when document.domain is not set
+	// see https://github.com/es-shims/es5-shim/issues/150
+	// variation of https://github.com/kitcambridge/es5-shim/commit/4f738ac066346
+	// avoid IE GC bug
+	var activeXDocument;
+	var NullProtoObject = function () {
+	  try {
+	    /* global ActiveXObject -- old IE */
+	    activeXDocument = document.domain && new ActiveXObject('htmlfile');
+	  } catch (error) {/* ignore */}
+	  NullProtoObject = activeXDocument ? NullProtoObjectViaActiveX(activeXDocument) : NullProtoObjectViaIFrame();
+	  var i = dontEnums.length;
+	  while (i--) delete NullProtoObject.prototype[dontEnums[i]];
+	  return NullProtoObject();
+	};
+
+	function isJsObject(o) {
+	  if (typeof o !== "object") {
+	    return false;
+	  }
+	  if (o instanceof Object) {
+	    return true;
+	  }
+	  if (o instanceof NullProtoObject) {
+	    return true;
+	  }
+	  return false;
+	}
+
+	var hasEnumBug = !{
+	  toString: null
+	}.propertyIsEnumerable('toString');
+
+	function getPrototypeOf(obj) {
+	  if (obj == null) {
+	    throw new TypeError("Cannot convert undefined or null to object");
+	  }
+	  if (typeof obj !== "object") {
+	    obj = Object(obj);
+	  }
+	  if ('__proto__' in obj) {
+	    return obj.__proto__;
+	  }
+	  if (!('constructor' in obj)) {
+	    return null;
+	  }
+	  if (Object.prototype.hasOwnProperty.call(obj, 'constructor')) {
+	    if ('__proto__' in obj.constructor) {
+	      return obj.constructor.__proto__.prototype;
+	    } else if (obj === Object.prototype) {
+	      return null;
+	    } else {
+	      return Object.prototype;
+	    }
+	  }
+	  return obj.constructor.prototype;
+	}
+	getPrototypeOf.sham = true;
+
+	function keys$1(obj) {
+	  if (obj == null) {
+	    throw new TypeError("Cannot convert undefined or null to object");
+	  }
+	  var result = [],
+	    key;
+	  var jsObject = isJsObject(obj);
+	  if (!jsObject) {
+	    var proto = getPrototypeOf(obj);
+	    if (proto) {
+	      for (key in obj) {
+	        switch (key.substring(0, 2)) {
+	          case "__":
+	          case "@@":
+	            continue;
+	        }
+	        if (proto[key] !== obj[key]) {
+	          result.push(key);
+	        }
+	      }
+	      return result;
+	    }
+	  }
+	  for (key in obj) {
+	    switch (key.substring(0, 2)) {
+	      case "__":
+	      case "@@":
+	        continue;
+	    }
+	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+	      var desc = obj["@@desc:" + key];
+	      if (!desc || desc.enumerable) {
+	        result.push(key);
+	      }
+	    }
+	  }
+	  if (hasEnumBug) {
+	    var i = dontEnums.length;
+	    while (i-- > 0) {
+	      key = dontEnums[i];
+	      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+	        result.push(key);
+	      }
+	    }
+	  }
+	  return result;
+	}
+
+	if (!Object$1.keys) {
+	  Object$1.keys = keys$1;
+	}
+
 	var Array$1 = window.Array;
 
 	function isArray(obj) {
@@ -493,7 +643,7 @@
 	var TARGET$1 = '@@TARGET';
 	var SIGNALS = '@@SIGNALS';
 	var LENGTH$1 = '@@LENGTH';
-	var REACTIVE = '@@REACTIVE';
+	var REACTIVE$1 = '@@REACTIVE';
 	window.execScript(['Class VBReactiveArray', '	Public [@@TARGET]', '	Public [@@LENGTH]', '	Public [@@SIGNALS]', '	Public [@@REACTIVE]', '	Public [@@WeakMap]', '	Public [__proto__]', '	Public [constructor]', '	Public Property Let [length](var)', '		Call Me.[@@LENGTH].set(var)', '		Me.[@@TARGET].length = var', '	End Property', '	Public Property Get [length]', '		[length] = Me.[@@LENGTH].get()', '	End Property', '	Public [at]', '	Public [push]', '	Public [pop]', '	Public [unshift]', '	Public [shift]', '	Public [splice]', '	Public [map]', '	Public [filter]', '	Public [concat]', 'End Class', 'Function VBReactiveArrayFactory()', '	Set VBReactiveArrayFactory = New VBReactiveArray', 'End Function'].join('\n'), 'VBScript');
 	function array(arr, reactive) {
 	  var i = arr.length;
@@ -501,7 +651,7 @@
 	  var target = r[TARGET$1] = new Array(i);
 	  r[SIGNALS] = new Map();
 	  r[LENGTH$1] = signal(i);
-	  r[REACTIVE] = reactive;
+	  r[REACTIVE$1] = reactive;
 	  while (i-- > 0) {
 	    target[i] = reactive(arr[i]);
 	  }
@@ -546,7 +696,7 @@
 	  return r;
 	}
 	function push() {
-	  var reactive = this[REACTIVE];
+	  var reactive = this[REACTIVE$1];
 	  try {
 	    batchStart();
 	    var oldLength = this.length;
@@ -595,7 +745,7 @@
 	  }
 	}
 	function unshift() {
-	  var reactive = this[REACTIVE];
+	  var reactive = this[REACTIVE$1];
 	  try {
 	    batchStart();
 	    var oldLength = this.length;
@@ -653,7 +803,7 @@
 	  }
 	}
 	function splice() {
-	  var reactive = this[REACTIVE];
+	  var reactive = this[REACTIVE$1];
 	  try {
 	    batchStart();
 	    var args = [],
@@ -679,19 +829,19 @@
 	  }
 	}
 	function map() {
-	  var reactive = this[REACTIVE];
+	  var reactive = this[REACTIVE$1];
 	  var target = this[TARGET$1];
 	  var r = Array.prototype.map.apply(target, arguments);
 	  return array(r, reactive);
 	}
 	function filter() {
-	  var reactive = this[REACTIVE];
+	  var reactive = this[REACTIVE$1];
 	  var target = this[TARGET$1];
 	  var r = Array.prototype.filter.apply(target, arguments);
 	  return array(r, reactive);
 	}
 	function concat() {
-	  var reactive = this[REACTIVE];
+	  var reactive = this[REACTIVE$1];
 	  var r = ReactiveArray();
 	  var target = r[TARGET$1];
 	  var l = 0;
@@ -705,8 +855,82 @@
 	  r.length = l;
 	  return r;
 	}
+	var seq = 0;
+	var TARGET = '@@TARGET';
+	var REACTIVE = '@@REACTIVE';
+	function createClass(o, reactive, getSignals) {
+	  var id = ++seq;
+	  var keys = [];
+	  var Super = o.constructor;
+	  if (arguments.length === 1) {
+	    reactive = returnArg;
+	  }
+	  var scripts = ['Class VBReactiveClass' + id, '	Public [@@TARGET]', '	Public [@@WeakMap]', '	Public [@@REACTIVE]', '	Public [__proto__]', '	Public [constructor]'];
+	  for (var key in o) {
+	    switch (key) {
+	      case '@@TARGET':
+	      case '@@WeakMap':
+	      case '__proto__':
+	      case 'constructor':
+	        continue;
+	    }
+	    if (Object.prototype.hasOwnProperty.call(o, key) || typeof o[key] !== "function") {
+	      scripts.push('	Public Property Let [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(var)', '	End Property', '	Public Property Set [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(Me.[@@REACTIVE](var))', '	End Property', '	Public Property Get [' + key + ']', '		On Error Resume Next', '		Set [' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		If Err.Number <> 0 Then', '			[' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		End If', '		On Error Goto 0', '	End Property');
+	      keys.push(key);
+	    } else {
+	      scripts.push('	Public [' + key + ']');
+	    }
+	  }
+	  scripts = scripts.concat(['End Class', 'Function VBReactiveClassFactory' + id + '()', '	Set VBReactiveClassFactory' + id + ' = New VBReactiveClass' + id, 'End Function']);
+	  window.execScript(scripts.join('\n'), 'VBScript');
+	  return createJsClass(id, keys, Super, reactive, getSignals);
+	}
+	function createJsClass(id, keys, Super, reactive, getSignals) {
+	  var Class = function () {
+	    var o = window['VBReactiveClassFactory' + id]();
+	    var target;
+	    if (getSignals) {
+	      target = getSignals.call(o, keys);
+	    } else {
+	      target = {};
+	      var i = keys.length;
+	      while (i--) {
+	        target[keys[i]] = signal(undefined);
+	      }
+	    }
+	    o[TARGET] = target;
+	    o[REACTIVE] = reactive;
+	    o.constructor = Class;
+	    o.__proto__ = Class.prototype;
+	    Super.apply(o, arguments);
+	    return o;
+	  };
+	  if (Super && Super !== Object) {
+	    Object.setPrototypeOf(Class, Super);
+	    Class.prototype = Object.create(Super.prototype);
+	  }
+	  Class.prototype.constructor = Class;
+	  return Class;
+	}
+	function returnArg(arg1) {
+	  return arg1;
+	}
+	var cache = {};
 	function record(o, reactive) {
-	  return o;
+	  var keys = Object.keys(o).sort();
+	  var key = keys.join("\n");
+	  var Class = cache[key];
+	  if (!Class) {
+	    Class = createClass(o, reactive);
+	    cache[key] = Class;
+	  }
+	  var r = new Class();
+	  var i = keys.length;
+	  while (i--) {
+	    key = keys[i];
+	    r[key] = o[key];
+	  }
+	  return r;
 	}
 	var isReactive = new WeakMap();
 	function reactive(o) {
@@ -723,62 +947,26 @@
 	    if (isReactive.get(o)) {
 	      return o;
 	    }
-	    return record(o);
+	    return record(o, reactive);
 	  }
 	  return o;
 	}
-	var seq = 0;
-	var TARGET = '@@TARGET';
-	function createClass(o, Super, getSignals) {
-	  var id = ++seq;
-	  var keys = [];
-	  var constructor = o.constructor;
-	  var scripts = ['Class VBReactiveClass' + id, '	Public [@@TARGET]', '	Public [@@WeakMap]', '	Public [__proto__]', '	Public [constructor]'];
-	  for (var key in o) {
-	    switch (key) {
-	      case '@@TARGET':
-	      case '@@WeakMap':
-	      case '__proto__':
-	      case 'constructor':
-	        continue;
-	    }
-	    if (Object.prototype.hasOwnProperty.call(o, key) || typeof o[key] !== "function") {
-	      scripts.push('	Public Property Let [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(var)', '	End Property', '	Public Property Set [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(var)', '	End Property', '	Public Property Get [' + key + ']', '		On Error Resume Next', '		Set [' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		If Err.Number <> 0 Then', '			[' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		End If', '		On Error Goto 0', '	End Property');
-	      keys.push(key);
-	    } else {
-	      scripts.push('	Public [' + key + ']');
-	    }
-	  }
-	  scripts = scripts.concat(['End Class', 'Function VBReactiveClassFactory' + id + '()', '	Set VBReactiveClassFactory' + id + ' = New VBReactiveClass' + id, 'End Function']);
-	  window.execScript(scripts.join('\n'), 'VBScript');
-	  return createJsClass(id, keys, constructor, Super, getSignals);
-	}
-	function createJsClass(id, keys, constructor, Super, getSignals) {
-	  var Class = function () {
-	    var o = window['VBReactiveClassFactory' + id]();
-	    var target;
-	    if (getSignals) {
-	      target = getSignals.call(o, keys);
-	    } else {
-	      target = {};
-	      var i = keys.length;
-	      while (i--) {
-	        target[keys[i]] = signal(undefined);
-	      }
-	    }
-	    o[TARGET] = target;
-	    o.constructor = Class;
-	    o.__proto__ = Class.prototype;
-	    constructor.apply(o, arguments);
-	    return o;
-	  };
-	  if (Super && Super !== Object) {
-	    Object.setPrototypeOf(Class, Super);
-	    Class.prototype = Object.create(Super.prototype);
-	  }
-	  Class.prototype.constructor = Class;
-	  return Class;
-	}
+
+	QUnit.test('record#key', function (assert) {
+	  var object = reactive({
+	    name: "Tom"
+	  });
+	  var key = {};
+	  var i = 0;
+	  effect(key, function () {
+	    return object.name;
+	  }, function () {
+	    i++;
+	  });
+	  assert.equal(i, 0);
+	  object.name = "Jerry";
+	  assert.equal(i, 1);
+	});
 
 	var LENGTH = 'length';
 	QUnit.test('array#length', function (assert) {

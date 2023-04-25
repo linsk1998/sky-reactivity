@@ -2,15 +2,20 @@ import { signal } from "../core/signal";
 
 var seq = 0;
 export var TARGET = '@@TARGET';
+export var REACTIVE = '@@REACTIVE';
 
-export function createClass(o, Super, getSignals) {
+export function createClass(o, reactive, getSignals) {
 	var id = ++seq;
 	var keys = [];
-	var constructor = o.constructor;
+	var Super = o.constructor;
+	if(arguments.length === 1) {
+		reactive = returnArg;
+	}
 	var scripts = [
 		'Class VBReactiveClass' + id,
 		'	Public [@@TARGET]',
 		'	Public [@@WeakMap]',
+		'	Public [@@REACTIVE]',
 		'	Public [__proto__]',
 		'	Public [constructor]'
 	];
@@ -28,7 +33,7 @@ export function createClass(o, Super, getSignals) {
 				'		Call Me.[@@TARGET].[' + key + '].set(var)',
 				'	End Property',
 				'	Public Property Set [' + key + '](var)',
-				'		Call Me.[@@TARGET].[' + key + '].set(var)',
+				'		Call Me.[@@TARGET].[' + key + '].set(Me.[@@REACTIVE](var))',
 				'	End Property',
 				'	Public Property Get [' + key + ']',
 				'		On Error Resume Next',
@@ -51,10 +56,10 @@ export function createClass(o, Super, getSignals) {
 		'End Function'
 	]);
 	window.execScript(scripts.join('\n'), 'VBScript');
-	return createJsClass(id, keys, constructor, Super, getSignals);
+	return createJsClass(id, keys, Super, reactive, getSignals);
 }
 
-function createJsClass(id, keys, constructor, Super, getSignals) {
+function createJsClass(id, keys, Super, reactive, getSignals) {
 	var Class = function() {
 		var o = window['VBReactiveClassFactory' + id]();
 		var target;
@@ -68,9 +73,10 @@ function createJsClass(id, keys, constructor, Super, getSignals) {
 			}
 		}
 		o[TARGET] = target;
+		o[REACTIVE] = reactive;
 		o.constructor = Class;
 		o.__proto__ = Class.prototype;
-		constructor.apply(o, arguments);
+		Super.apply(o, arguments);
 		return o;
 	};
 	if(Super && Super !== Object) {
@@ -79,4 +85,8 @@ function createJsClass(id, keys, constructor, Super, getSignals) {
 	}
 	Class.prototype.constructor = Class;
 	return Class;
+}
+
+export function returnArg(arg1) {
+	return arg1;
 }
