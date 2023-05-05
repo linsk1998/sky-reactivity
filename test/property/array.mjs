@@ -8,6 +8,7 @@ describe("property", function() {
 		it("length", function() {
 			var array = reactive([]);
 			assert.equal(array.length, 0);
+			assert.ok(array instanceof Array);
 		});
 		it("at", function() {
 			var array = reactive([]);

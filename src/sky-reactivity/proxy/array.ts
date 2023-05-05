@@ -3,6 +3,7 @@ import { Signal } from "../core/signal";
 
 
 const SIGNALS = Symbol();
+const SIGNAL = Symbol();
 const LENGTH = Symbol();
 const REACTIVE = Symbol();
 
@@ -10,6 +11,7 @@ export function array<T>(arr: T[], reactive: Function): ReactiveArray<T> {
 	var i = arr.length;
 	var r = Object.create(ReactiveArray.prototype);
 	r[SIGNALS] = new Map();
+	r[SIGNAL] = new Signal(false);
 	r[LENGTH] = new Signal(i);
 	r[REACTIVE] = reactive;
 	while(i-- > 0) {
@@ -18,7 +20,7 @@ export function array<T>(arr: T[], reactive: Function): ReactiveArray<T> {
 	return r;
 }
 
-export class ReactiveArray<T = any> {
+export class ReactiveArray<T = any> extends Array {
 	private [SIGNALS]: Map<number, Signal<T>>;
 	private [LENGTH]: Signal<number>;
 	private [REACTIVE]: (item: any) => any;
@@ -60,6 +62,8 @@ export class ReactiveArray<T = any> {
 				}
 			});
 			this[LENGTH].set(newLength);
+			var s = this[SIGNAL];
+			s.set(!s.get());
 			return newLength;
 		} finally {
 			batchEnd();
@@ -82,6 +86,8 @@ export class ReactiveArray<T = any> {
 				}
 			});
 			this[LENGTH].set(newLength);
+			var s = this[SIGNAL];
+			s.set(!s.get());
 			return r;
 		} finally {
 			batchEnd();
@@ -108,6 +114,8 @@ export class ReactiveArray<T = any> {
 				}
 			});
 			this[LENGTH].set(newLength);
+			var s = this[SIGNAL];
+			s.set(!s.get());
 			return newLength;
 		} finally {
 			batchEnd();
@@ -133,6 +141,8 @@ export class ReactiveArray<T = any> {
 				}
 			});
 			this[LENGTH].set(newLength);
+			var s = this[SIGNAL];
+			s.set(!s.get());
 			return r;
 		} finally {
 			batchEnd();
@@ -156,37 +166,27 @@ export class ReactiveArray<T = any> {
 				}
 			});
 			this[LENGTH].set(newLength);
+			var s = this[SIGNAL];
+			s.set(!s.get());
 			return array(r, reactive);
 		} finally {
 			batchEnd();
 		}
 	}
 	public map<U>(callbackfn: (value: T, index: number, array: T[]) => U, thisArg?: any): ReactiveArray<U> {
-		var reactive = this[REACTIVE];
-		var r = Array.prototype.map.apply(this, arguments);
-		return array(r, reactive);
+		this[SIGNAL].get();
+		return Array.prototype.map.apply(this, arguments);
 	}
 	public filter<S extends T>(predicate: (value: T, index: number, array: T[]) => value is S, thisArg?: any): ReactiveArray<S>;
 	public filter(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): ReactiveArray<T>;
 	public filter(predicate: any, thisArg?: unknown): ReactiveArray<T> {
-		var reactive = this[REACTIVE];
-		var r = Array.prototype.filter.apply(this, arguments);
-		return array(r, reactive);
+		this[SIGNAL].get();
+		return Array.prototype.filter.apply(this, arguments);
 	}
 	public concat(...items: ConcatArray<T>[]): ReactiveArray<T>;
 	public concat(...items: (T | ConcatArray<T>)[]): ReactiveArray<T>;
 	public concat(): ReactiveArray<T> {
-		var reactive = this[REACTIVE];
-		var r = new ReactiveArray<T>();
-		var l = 0;
-		for(var i = 0; i <= arguments.length; i++) {
-			var arr = arguments[i];
-			for(var j = 0; j <= arguments.length; j++) {
-				r[l] = reactive(arr[j]);
-				l++;
-			}
-		}
-		r.length = l;
-		return r;
+		this[SIGNAL].get();
+		return Array.prototype.concat.apply(this, arguments);
 	}
 }

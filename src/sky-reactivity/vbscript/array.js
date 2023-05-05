@@ -3,6 +3,7 @@ import { signal } from "../core/signal";
 
 const TARGET = '@@TARGET';
 const SIGNALS = '@@SIGNALS';
+const SIGNAL = '@@SIGNAL';
 const LENGTH = '@@LENGTH';
 const REACTIVE = '@@REACTIVE';
 
@@ -12,6 +13,7 @@ window.execScript([
 	'	Public [@@TARGET]',
 	'	Public [@@LENGTH]',
 	'	Public [@@SIGNALS]',
+	'	Public [@@SIGNAL]',
 	'	Public [@@REACTIVE]',
 	'	Public [@@WeakMap]',
 	'	Public [__proto__]',
@@ -40,10 +42,9 @@ window.execScript([
 
 export function array(arr, reactive) {
 	var i = arr.length;
-	var r = ReactiveArray();
-	var target = r[TARGET] = new Array(i);
+	var r = ReactiveArray(i);
+	var target = r[TARGET];
 	r[SIGNALS] = new Map();
-	r[LENGTH] = signal(i);
 	r[REACTIVE] = reactive;
 	while(i-- > 0) {
 		target[i] = reactive(arr[i], i);
@@ -54,8 +55,10 @@ export function array(arr, reactive) {
 
 function ReactiveArray(length) {
 	var r = VBReactiveArrayFactory();
+	var target = r[TARGET] = new Array(length);
 	r[SIGNALS] = new Map();
 	r[LENGTH] = signal(length);
+	r[SIGNAL] = signal(false);
 	r.__proto__ = ReactiveArray.prototype;
 	r.constructor = ReactiveArray;
 	r.at = at.bind(r);
@@ -69,15 +72,13 @@ function ReactiveArray(length) {
 	r.concat = concat.bind(r);
 	return r;
 }
+ReactiveArray.prototype = Object.create(Array.prototype);
 ReactiveArray.prototype.at = at;
 ReactiveArray.prototype.push = push;
 ReactiveArray.prototype.pop = pop;
 ReactiveArray.prototype.unshift = unshift;
 ReactiveArray.prototype.shift = shift;
 ReactiveArray.prototype.splice = splice;
-ReactiveArray.prototype.map = map;
-ReactiveArray.prototype.filter = filter;
-ReactiveArray.prototype.concat = concat;
 
 function at(n) {
 	var target = this[TARGET];
@@ -112,6 +113,8 @@ function push() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return newLength;
 	} finally {
 		batchEnd();
@@ -135,6 +138,8 @@ function pop() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return newLength;
 	} finally {
 		batchEnd();
@@ -166,6 +171,8 @@ function unshift() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return r;
 	} finally {
 		batchEnd();
@@ -192,6 +199,8 @@ function shift() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return r;
 	} finally {
 		batchEnd();
@@ -217,37 +226,24 @@ function splice() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return array(r, reactive);
 	} finally {
 		batchEnd();
 	}
 }
 function map() {
-	var reactive = this[REACTIVE];
-	var target = this[TARGET];
-	var r = Array.prototype.map.apply(target, arguments);
-	return array(r, reactive);
+	this[SIGNAL].get();
+	return Array.prototype.map.apply(this[TARGET], arguments);
 }
 
 function filter() {
-	var reactive = this[REACTIVE];
-	var target = this[TARGET];
-	var r = Array.prototype.filter.apply(target, arguments);
-	return array(r, reactive);
+	this[SIGNAL].get();
+	return Array.prototype.filter.apply(this[TARGET], arguments);
 }
 
 function concat() {
-	var reactive = this[REACTIVE];
-	var r = ReactiveArray();
-	var target = r[TARGET];
-	var l = 0;
-	for(var i = 0; i <= arguments.length; i++) {
-		var arr = arguments[i];
-		for(var j = 0; j <= arguments.length; j++) {
-			target[l] = reactive(arr[j]);
-			l++;
-		}
-	}
-	r.length = l;
-	return r;
+	this[SIGNAL].get();
+	return Array.prototype.concat.apply(this[TARGET], arguments);
 }

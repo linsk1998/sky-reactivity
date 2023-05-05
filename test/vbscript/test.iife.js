@@ -792,15 +792,15 @@
 	}
 	var TARGET$1 = '@@TARGET';
 	var SIGNALS = '@@SIGNALS';
+	var SIGNAL = '@@SIGNAL';
 	var LENGTH$1 = '@@LENGTH';
 	var REACTIVE$1 = '@@REACTIVE';
-	window.execScript(['Class VBReactiveArray', '	Public [@@TARGET]', '	Public [@@LENGTH]', '	Public [@@SIGNALS]', '	Public [@@REACTIVE]', '	Public [@@WeakMap]', '	Public [__proto__]', '	Public [constructor]', '	Public Property Let [length](var)', '		Call Me.[@@LENGTH].set(var)', '		Me.[@@TARGET].length = var', '	End Property', '	Public Property Get [length]', '		[length] = Me.[@@LENGTH].get()', '	End Property', '	Public [at]', '	Public [push]', '	Public [pop]', '	Public [unshift]', '	Public [shift]', '	Public [splice]', '	Public [map]', '	Public [filter]', '	Public [concat]', 'End Class', 'Function VBReactiveArrayFactory()', '	Set VBReactiveArrayFactory = New VBReactiveArray', 'End Function'].join('\n'), 'VBScript');
+	window.execScript(['Class VBReactiveArray', '	Public [@@TARGET]', '	Public [@@LENGTH]', '	Public [@@SIGNALS]', '	Public [@@SIGNAL]', '	Public [@@REACTIVE]', '	Public [@@WeakMap]', '	Public [__proto__]', '	Public [constructor]', '	Public Property Let [length](var)', '		Call Me.[@@LENGTH].set(var)', '		Me.[@@TARGET].length = var', '	End Property', '	Public Property Get [length]', '		[length] = Me.[@@LENGTH].get()', '	End Property', '	Public [at]', '	Public [push]', '	Public [pop]', '	Public [unshift]', '	Public [shift]', '	Public [splice]', '	Public [map]', '	Public [filter]', '	Public [concat]', 'End Class', 'Function VBReactiveArrayFactory()', '	Set VBReactiveArrayFactory = New VBReactiveArray', 'End Function'].join('\n'), 'VBScript');
 	function array(arr, reactive) {
 	  var i = arr.length;
-	  var r = ReactiveArray();
-	  var target = r[TARGET$1] = new Array(i);
+	  var r = ReactiveArray(i);
+	  var target = r[TARGET$1];
 	  r[SIGNALS] = new Map();
-	  r[LENGTH$1] = signal(i);
 	  r[REACTIVE$1] = reactive;
 	  while (i-- > 0) {
 	    target[i] = reactive(arr[i], i);
@@ -809,8 +809,10 @@
 	}
 	function ReactiveArray(length) {
 	  var r = VBReactiveArrayFactory();
+	  r[TARGET$1] = new Array(length);
 	  r[SIGNALS] = new Map();
 	  r[LENGTH$1] = signal(length);
+	  r[SIGNAL] = signal(false);
 	  r.__proto__ = ReactiveArray.prototype;
 	  r.constructor = ReactiveArray;
 	  r.at = at.bind(r);
@@ -824,15 +826,13 @@
 	  r.concat = concat.bind(r);
 	  return r;
 	}
+	ReactiveArray.prototype = Object.create(Array.prototype);
 	ReactiveArray.prototype.at = at;
 	ReactiveArray.prototype.push = push;
 	ReactiveArray.prototype.pop = pop;
 	ReactiveArray.prototype.unshift = unshift;
 	ReactiveArray.prototype.shift = shift;
 	ReactiveArray.prototype.splice = splice;
-	ReactiveArray.prototype.map = map;
-	ReactiveArray.prototype.filter = filter;
-	ReactiveArray.prototype.concat = concat;
 	function at(n) {
 	  var target = this[TARGET$1];
 	  var r = n < 0 ? target[n + this[LENGTH$1].value] : target[n];
@@ -866,6 +866,8 @@
 	      }
 	    });
 	    this[LENGTH$1].set(newLength);
+	    var s = this[SIGNAL];
+	    s.set(!s.get());
 	    return newLength;
 	  } finally {
 	    batchEnd();
@@ -889,6 +891,8 @@
 	      }
 	    });
 	    this[LENGTH$1].set(newLength);
+	    var s = this[SIGNAL];
+	    s.set(!s.get());
 	    return newLength;
 	  } finally {
 	    batchEnd();
@@ -921,6 +925,8 @@
 	      }
 	    });
 	    this[LENGTH$1].set(newLength);
+	    var s = this[SIGNAL];
+	    s.set(!s.get());
 	    return r;
 	  } finally {
 	    batchEnd();
@@ -947,6 +953,8 @@
 	      }
 	    });
 	    this[LENGTH$1].set(newLength);
+	    var s = this[SIGNAL];
+	    s.set(!s.get());
 	    return r;
 	  } finally {
 	    batchEnd();
@@ -973,37 +981,24 @@
 	      }
 	    });
 	    this[LENGTH$1].set(newLength);
+	    var s = this[SIGNAL];
+	    s.set(!s.get());
 	    return array(r, reactive);
 	  } finally {
 	    batchEnd();
 	  }
 	}
 	function map() {
-	  var reactive = this[REACTIVE$1];
-	  var target = this[TARGET$1];
-	  var r = Array.prototype.map.apply(target, arguments);
-	  return array(r, reactive);
+	  this[SIGNAL].get();
+	  return Array.prototype.map.apply(this[TARGET$1], arguments);
 	}
 	function filter() {
-	  var reactive = this[REACTIVE$1];
-	  var target = this[TARGET$1];
-	  var r = Array.prototype.filter.apply(target, arguments);
-	  return array(r, reactive);
+	  this[SIGNAL].get();
+	  return Array.prototype.filter.apply(this[TARGET$1], arguments);
 	}
 	function concat() {
-	  var reactive = this[REACTIVE$1];
-	  var r = ReactiveArray();
-	  var target = r[TARGET$1];
-	  var l = 0;
-	  for (var i = 0; i <= arguments.length; i++) {
-	    var arr = arguments[i];
-	    for (var j = 0; j <= arguments.length; j++) {
-	      target[l] = reactive(arr[j]);
-	      l++;
-	    }
-	  }
-	  r.length = l;
-	  return r;
+	  this[SIGNAL].get();
+	  return Array.prototype.concat.apply(this[TARGET$1], arguments);
 	}
 	var seq = 0;
 	var TARGET = '@@TARGET';

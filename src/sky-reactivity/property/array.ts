@@ -2,6 +2,7 @@ import { batchEnd, batchStart } from "../core/batch";
 import { Signal } from "../core/signal";
 
 const SIGNALS = '@@SIGNALS';
+const SIGNAL = '@@SIGNAL';
 const LENGTH = '@@LENGTH';
 const REACTIVE = '@@REACTIVE';
 
@@ -21,6 +22,9 @@ export function array(arr: any[], reactive: Function) {
 
 function ReactiveArray() {
 }
+ReactiveArray.prototype = Object.create(Array.prototype);
+ReactiveArray.constructor = ReactiveArray;
+Object.setPrototypeOf(ReactiveArray, Array);
 
 Object.defineProperty(ReactiveArray.prototype, 'length', {
 	get: function() {
@@ -64,6 +68,8 @@ ReactiveArray.prototype.push = function() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return newLength;
 	} finally {
 		batchEnd();
@@ -86,6 +92,8 @@ ReactiveArray.prototype.pop = function() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return r;
 	} finally {
 		batchEnd();
@@ -115,6 +123,8 @@ ReactiveArray.prototype.unshift = function() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return newLength;
 	} finally {
 		batchEnd();
@@ -140,6 +150,8 @@ ReactiveArray.prototype.shift = function() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return r;
 	} finally {
 		batchEnd();
@@ -164,6 +176,8 @@ ReactiveArray.prototype.splice = function() {
 			}
 		});
 		this[LENGTH].set(newLength);
+		var s = this[SIGNAL];
+		s.set(!s.get());
 		return array(r, reactive);
 	} finally {
 		batchEnd();
@@ -171,28 +185,16 @@ ReactiveArray.prototype.splice = function() {
 };
 
 ReactiveArray.prototype.map = function() {
-	var reactive = this[REACTIVE];
-	var r = Array.prototype.map.apply(this, arguments);
-	return array(r, reactive);
+	this[SIGNAL].get();
+	return Array.prototype.map.apply(this, arguments);
 };
 
 ReactiveArray.prototype.filter = function() {
-	var reactive = this[REACTIVE];
-	var r = Array.prototype.filter.apply(this, arguments);
-	return array(r, reactive);
+	this[SIGNAL].get();
+	return Array.prototype.filter.apply(this, arguments);
 };
 
 ReactiveArray.prototype.concat = function() {
-	var reactive = this[REACTIVE];
-	var r = new ReactiveArray();
-	var l = 0;
-	for(var i = 0; i <= arguments.length; i++) {
-		var arr = arguments[i];
-		for(var j = 0; j <= arguments.length; j++) {
-			r[l] = reactive(arr[j]);
-			l++;
-		}
-	}
-	r.length = l;
-	return r;
+	this[SIGNAL].get();
+	return Array.prototype.concat.apply(this, arguments);
 };

@@ -5,6 +5,11 @@ import { effect, reactive } from "../../dist/sky-reactivity.proxy.esnext.mjs";
 describe("proxy", function() {
 	describe("array", function() {
 		const LENGTH = 'length';
+		it("length", function() {
+			var array = reactive([]);
+			assert.equal(array.length, 0);
+			assert.ok(array instanceof Array);
+		});
 		it("at", function() {
 			var array = reactive([]);
 			var key = {};

@@ -15,6 +15,9 @@ export function createClass(options): any {
 	var batches = options.batches;
 	var Class = function() {
 		var o = this;
+		if(Super && Super !== Object) {
+			Super.apply(o, arguments);
+		}
 		var target = o[TARGET] = {};
 		var key: string;
 		if(members) {
@@ -24,7 +27,8 @@ export function createClass(options): any {
 		}
 		if(observables) {
 			for(key in observables) {
-				target[key] = signal(observables[key]);
+				target[key] = signal(o[key]);
+				defineProperty(this, key, reactive);
 			}
 		}
 		if(com) {
@@ -33,6 +37,7 @@ export function createClass(options): any {
 				var getter = desc.get;
 				var setter = desc.set;
 				target[key] = computed(getter.bind(o), setter && setter.bind(o));
+				defineProperty(this, key, reactive);
 			}
 		}
 		if(methods) {
@@ -56,9 +61,6 @@ export function createClass(options): any {
 				};
 			}, o);
 		}
-		if(Super && Super !== Object) {
-			Super.apply(o, arguments);
-		}
 		Object.preventExtensions(o);
 	};
 	if(Super && Super !== Object) {
@@ -67,16 +69,6 @@ export function createClass(options): any {
 	}
 	Class.prototype.constructor = Class;
 	var key: string;
-	if(observables) {
-		for(key in observables) {
-			defineProperty(Class.prototype, key, reactive);
-		}
-	}
-	if(com) {
-		for(key in com) {
-			defineProperty(Class.prototype, key, reactive);
-		}
-	}
 	if(accessors) {
 		for(key in accessors) {
 			var accessor = accessors[key];
