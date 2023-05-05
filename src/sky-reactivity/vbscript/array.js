@@ -46,7 +46,7 @@ export function array(arr, reactive) {
 	r[LENGTH] = signal(i);
 	r[REACTIVE] = reactive;
 	while(i-- > 0) {
-		target[i] = reactive(arr[i]);
+		target[i] = reactive(arr[i], i);
 	}
 	return r;
 }

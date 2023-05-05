@@ -4,7 +4,7 @@ import { Signal } from "../core/signal";
 export function record(o: any, reactive: Function) {
 	var keyMap = new Map();
 	for(var key in o) {
-		keyMap.set(key, new Signal(reactive(o[key])));
+		keyMap.set(key, new Signal(reactive(o[key], key)));
 	}
 	return new Proxy(o, {
 		get(target, prop, receiver) {
@@ -32,7 +32,7 @@ export function record(o: any, reactive: Function) {
 				box = new Signal();
 				keyMap.set(prop, box);
 			}
-			value = reactive(value);
+			value = reactive(value, prop);
 			box.set(value);
 			return true;
 			// return Reflect.set(target, prop, value, receiver);

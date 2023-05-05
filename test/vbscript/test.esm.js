@@ -1,4 +1,7 @@
+import "sky-core/polyfill/console";
 import "sky-core/polyfill/WeakMap";
+import "sky-core/polyfill/Object/create";
+import "sky-core/polyfill-compat/Object/setPrototypeOf";
 import "sky-core/polyfill-compat/Object/keys";
 import "sky-core/polyfill/Array/isArray";
 import "sky-core/polyfill/Array/prototype/map";

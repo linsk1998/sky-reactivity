@@ -13,16 +13,18 @@ export function record(o: any, reactive: Function) {
 			case "@@":
 				break;
 			default:
-				m[key] = new Signal(reactive(o[key]));
-				defineProperty(r, key);
+				m[key] = new Signal(reactive(o[key], key));
+				defineProperty(r, key, reactive);
 		}
 	}
 	return r;
 }
 
-function defineProperty(r: any, key: string) {
+function defineProperty(r: any, key: string, reactive: Function) {
 	Object.defineProperty(r, key, {
-		set: function(v) {
+		set: reactive ? function(v) {
+			this[TARGET][key].set(reactive(v, key));
+		} : function(v) {
 			this[TARGET][key].set(v);
 		},
 		get: function() {

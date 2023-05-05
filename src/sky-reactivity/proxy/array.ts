@@ -13,7 +13,7 @@ export function array<T>(arr: T[], reactive: Function): ReactiveArray<T> {
 	r[LENGTH] = new Signal(i);
 	r[REACTIVE] = reactive;
 	while(i-- > 0) {
-		r[i] = reactive(arr[i]) as any;
+		r[i] = reactive(arr[i], i) as any;
 	}
 	return r;
 }

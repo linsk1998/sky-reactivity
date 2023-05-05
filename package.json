@@ -2,7 +2,7 @@
 	"name": "sky-reactivity",
 	"version": "0.2.2",
 	"description": "a reactivity system to automatically update the view when the state changes.",
-	"module": "dist/sky-reactivity.property.esnext.mjs",
+	"module": "dist/sky-reactivity.proxy.esnext.mjs",
 	"typings": "dist/types/sky-reactivity.proxy.d.ts",
 	"repository": {
 		"type": "git",

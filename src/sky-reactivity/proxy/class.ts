@@ -1,39 +1,101 @@
 import { Signal, signal } from "../core/signal";
+import { computed } from "../core/computed";
+import { batchStart, batchEnd } from "../core/batch";
 
-export var TARGET = Symbol();
+export const TARGET = Symbol();
 
-export function createClass<T>(o: T, reactive: Function, getSignals?: (keys: string[]) => Record<string, Signal<any>>): { new(): T; } {
-	var keys = Object.keys(o);
-	var Class = function() {
-		var target: Record<string, Signal<any>>;
-		if(getSignals) {
-			target = getSignals.call(this, keys);
-		} else {
-			target = {};
-			var i = keys.length;
-			while(i--) {
-				target[keys[i]] = signal(undefined);
+interface Accessor<T> {
+	get(): T;
+	set(v: T): void;
+}
+
+interface ClassOptions {
+	members?: Record<string, any>;
+	observables?: Record<string, any>;
+	accessors?: Record<string, Accessor<any>>;
+	computed?: Record<string, Accessor<any>>;
+	methods?: Record<string, Function>;
+	batches?: Record<string, Function>;
+	super?: any;
+	reactive?: (o: any, key: string) => any;
+}
+
+export function createClass<T>(options: ClassOptions): { new(): any; } {
+	var Super = options.super || Object;
+	var reactive = options.reactive;
+	var members = options.members;
+	var observables = options.observables;
+	var accessors = options.accessors;
+	var com = options.computed;
+	var methods = options.methods;
+	var batches = options.batches;
+	var Class = class extends Super {
+		declare [TARGET]: Record<string, Signal<any>>;
+		constructor() {
+			super();
+			var target = this[TARGET] = {};
+			var key: string;
+			if(members) {
+				for(key in members) {
+					this[key] = members[key];
+				}
 			}
+			if(observables) {
+				for(key in observables) {
+					target[key] = signal(this[key]);
+					defineProperty(this, key, reactive);
+				}
+			}
+			if(com) {
+				for(key in com) {
+					var desc = com[key];
+					var getter = desc.get;
+					var setter = desc.set;
+					target[key] = computed(getter.bind(this), setter && setter.bind(this));
+					defineProperty(this, key, reactive);
+				}
+			}
+			if(methods) {
+				for(key in methods) {
+					this[key] = methods[key].bind(this);
+				}
+			}
+			if(batches) {
+				for(let key in batches) {
+					let fn = batches[key];
+					this[key] = () => {
+						try {
+							batchStart();
+							fn.apply(this, arguments);
+						} catch(e) {
+							console.error(e);
+						} finally {
+							batchEnd();
+						}
+					};
+				}
+			}
+			Object.preventExtensions(this);
 		}
-		this[TARGET] = target;
-		Object.preventExtensions(this);
 	};
-	var Super = o.constructor;
-	if(Super && Super !== Object) {
-		Object.setPrototypeOf(Class, Super);
-		Class.prototype = Object.create(Super.prototype);
-	}
-	Class.prototype.constructor = Class;
-	var i = keys.length;
-	while(i--) {
-		defineProperty(Class.prototype, keys[i], reactive);
+	var key: string;
+	if(accessors) {
+		for(key in accessors) {
+			var accessor = accessors[key];
+			Object.defineProperty(Class.prototype, key, {
+				set: accessor.set,
+				get: accessor.get,
+				enumerable: true,
+				configurable: false
+			});
+		}
 	}
 	return Class as any;
 }
 function defineProperty(r: any, key: string, reactive: Function) {
 	Object.defineProperty(r, key, {
 		set: reactive ? function(v) {
-			this[TARGET][key].set(reactive(v));
+			this[TARGET][key].set(reactive(v, key));
 		} : function(v) {
 			this[TARGET][key].set(v);
 		},

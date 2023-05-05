@@ -10,5 +10,6 @@
 	"typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
 	"typescript.format.insertSpaceAfterKeywordsInControlFlowStatements": false,
 	"editor.renderWhitespace": "all",
-	"editor.wordWrap": "on"
+	"editor.wordWrap": "on",
+	"typescript.tsdk": "./node_modules/typescript/lib"
 }

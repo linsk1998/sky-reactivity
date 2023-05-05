@@ -1,6 +1,24 @@
 (function () {
 	'use strict';
 
+	if (!window.console) {
+	  window.console = function () {
+	    function log(data) {
+	      if (window.Debug) {
+	        Debug.writeln(data);
+	      }
+	    }
+	    function clear() {}
+	    return {
+	      log: log,
+	      info: log,
+	      error: log,
+	      warn: log,
+	      clear: clear
+	    };
+	  }();
+	}
+
 	var KEY_WM = "@@WeakMap";
 	var weakSeq = 0;
 	function WeakMap$1() {
@@ -123,6 +141,65 @@
 	  while (i--) delete NullProtoObject.prototype[dontEnums[i]];
 	  return NullProtoObject();
 	};
+
+	function F() {/* empty */}
+	function create$1(proto, properties) {
+	  var o;
+	  if (proto !== null) {
+	    F.prototype = proto;
+	    var o = new F();
+	    F.prototype = null;
+	  } else {
+	    o = NullProtoObject();
+	  }
+	  o.__proto__ = proto;
+	  if (properties) {
+	    Object.defineProperties(o, properties);
+	  }
+	  return o;
+	}
+	create$1.sham = true;
+
+	function create(proto, properties) {
+	  var o = {};
+	  Object.setPrototypeOf(o, proto);
+	  if (properties) {
+	    Object.defineProperties(o, properties);
+	  }
+	  return o;
+	}
+
+	if (!Object$1.create) {
+	  if ('__proto__' in Object$1.prototype) {
+	    Object$1.create = create;
+	  } else {
+	    Object$1.create = create$1;
+	  }
+	}
+
+	var proto = !!Object$1.setPrototypeOf || '__proto__' in Object$1.prototype;
+
+	function setPrototypeOf(o, proto) {
+	  o.__proto__ = proto;
+	  var key;
+	  for (key in proto) {
+	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
+	      o[key] = proto[key];
+	    }
+	  }
+	  var i = dontEnums.length;
+	  while (i-- > 0) {
+	    key = dontEnums[i];
+	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
+	      o[key] = proto[key];
+	    }
+	  }
+	  return o;
+	}
+
+	if (!proto) {
+	  Object$1.setPrototypeOf = setPrototypeOf;
+	}
 
 	function isJsObject(o) {
 	  if (typeof o !== "object") {
@@ -535,6 +612,23 @@
 	  };
 	}
 
+	function _setPrototypeOf(o, p) {
+	  _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function () {
+	    function _setPrototypeOf(o, p) {
+	      o.__proto__ = p;
+	      return o;
+	    }
+	    return _setPrototypeOf;
+	  }();
+	  return _setPrototypeOf(o, p);
+	}
+
+	function _inheritsLoose(subClass, superClass) {
+	  subClass.prototype = Object.create(superClass.prototype);
+	  subClass.prototype.constructor = subClass;
+	  _setPrototypeOf(subClass, superClass);
+	}
+
 	function _notify(callback, key) {
 	  callback.call(key);
 	}
@@ -559,6 +653,17 @@
 	  actionsToDo.set(key, callback);
 	}
 	var relation = new WeakMap();
+	function stop(key) {
+	  var rel = relation.get(key);
+	  if (rel) {
+	    rel.forEach(forEachObs);
+	    rel.clear();
+	    relation["delete"](key);
+	  }
+	}
+	function forEachObs(key, ob) {
+	  ob.unobserve(key);
+	}
 	var keyStack = [];
 	var callbackStack = [];
 	var currentKey;
@@ -640,6 +745,51 @@
 	function signal(initValue) {
 	  return new Signal(initValue);
 	}
+	var Computed = /*#__PURE__*/function (_Signal) {
+	  _inheritsLoose(Computed, _Signal);
+	  function Computed(getter, setter) {
+	    var _this;
+	    _this = _Signal.call(this) || this;
+	    _this.hasCache = false;
+	    _this.getter = getter;
+	    _this.setter = setter;
+	    return _this;
+	  }
+	  var _proto2 = Computed.prototype;
+	  _proto2.get = function () {
+	    function get() {
+	      if (this.hasCache) {
+	        return _Signal.prototype.get.call(this);
+	      }
+	      stop(this);
+	      this.value = effect(this, this.getter, this.onChange);
+	      this.hasCache = true;
+	      return _Signal.prototype.get.call(this);
+	    }
+	    return get;
+	  }();
+	  _proto2.onChange = function () {
+	    function onChange() {
+	      this.hasCache = false;
+	      this.notify();
+	    }
+	    return onChange;
+	  }();
+	  _proto2.set = function () {
+	    function set(value) {
+	      if (this.setter) {
+	        this.setter(value);
+	      } else {
+	        throw new TypeError("This computed is Readonly.");
+	      }
+	    }
+	    return set;
+	  }();
+	  return Computed;
+	}(Signal);
+	function computed(getter, setter) {
+	  return new Computed(getter, setter);
+	}
 	var TARGET$1 = '@@TARGET';
 	var SIGNALS = '@@SIGNALS';
 	var LENGTH$1 = '@@LENGTH';
@@ -653,7 +803,7 @@
 	  r[LENGTH$1] = signal(i);
 	  r[REACTIVE$1] = reactive;
 	  while (i-- > 0) {
-	    target[i] = reactive(arr[i]);
+	    target[i] = reactive(arr[i], i);
 	  }
 	  return r;
 	}
@@ -858,56 +1008,131 @@
 	var seq = 0;
 	var TARGET = '@@TARGET';
 	var REACTIVE = '@@REACTIVE';
-	function createClass(o, reactive, getSignals) {
+	function createClass(options) {
 	  var id = ++seq;
-	  var keys = [];
-	  var Super = o.constructor;
-	  if (arguments.length === 1) {
-	    reactive = returnArg;
-	  }
 	  var scripts = ['Class VBReactiveClass' + id, '	Public [@@TARGET]', '	Public [@@WeakMap]', '	Public [@@REACTIVE]', '	Public [__proto__]', '	Public [constructor]'];
-	  for (var key in o) {
-	    switch (key) {
-	      case '@@TARGET':
-	      case '@@WeakMap':
-	      case '__proto__':
-	      case 'constructor':
-	        continue;
+	  var key;
+	  var members = options.members;
+	  if (members) {
+	    for (key in members) {
+	      scripts.push('	Public [' + key + ']');
 	    }
-	    if (Object.prototype.hasOwnProperty.call(o, key) || typeof o[key] !== "function") {
-	      scripts.push('	Public Property Let [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(var)', '	End Property', '	Public Property Set [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(Me.[@@REACTIVE](var))', '	End Property', '	Public Property Get [' + key + ']', '		On Error Resume Next', '		Set [' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		If Err.Number <> 0 Then', '			[' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		End If', '		On Error Goto 0', '	End Property');
-	      keys.push(key);
-	    } else {
+	  }
+	  var observables = options.observables;
+	  if (observables) {
+	    for (key in observables) {
+	      scripts.push('	Public Property Let [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(var)', '	End Property', '	Public Property Set [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(Me.[@@REACTIVE](var,"' + key + '"))', '	End Property', '	Public Property Get [' + key + ']', '		On Error Resume Next', '		Set [' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		If Err.Number <> 0 Then', '			[' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		End If', '		On Error Goto 0', '	End Property');
+	    }
+	  }
+	  var accessors = options.accessors;
+	  if (accessors) {
+	    for (key in accessors) {
+	      var desc = accessors[key];
+	      scripts.push('	Public [@@desc:' + key + ']');
+	      if (desc.set) {
+	        scripts.push('	Public Property Let [' + key + '](var)', '		Call Me.[@@desc:' + key + '].set.call(Me, var)', '	End Property', '	Public Property Set [' + key + '](var)', '		Call Me.[@@desc:' + key + '].set.call(Me, var)', '	End Property');
+	      }
+	      if (desc.get) {
+	        scripts.push('	Public Property Get [' + key + ']', '		On Error Resume Next', '		Set [' + key + '] = Me.[@@desc:' + key + '].get.call(Me)', '		If Err.Number <> 0 Then', '			[' + key + '] = Me.[@@desc:' + key + '].get.call(Me)', '		End If', '		On Error Goto 0', '	End Property');
+	      }
+	    }
+	  }
+	  var computed = options.computed;
+	  if (computed) {
+	    for (key in computed) {
+	      var desc = computed[key];
+	      if (desc.set) {
+	        scripts.push('	Public Property Let [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(var)', '	End Property', '	Public Property Set [' + key + '](var)', '		Call Me.[@@TARGET].[' + key + '].set(Me.[@@REACTIVE](var,"' + key + '"))', '	End Property');
+	      }
+	      if (desc.get) {
+	        scripts.push('	Public Property Get [' + key + ']', '		On Error Resume Next', '		Set [' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		If Err.Number <> 0 Then', '			[' + key + '] = Me.[@@TARGET].[' + key + '].get()', '		End If', '		On Error Goto 0', '	End Property');
+	      }
+	    }
+	  }
+	  var methods = options.methods;
+	  if (methods) {
+	    for (key in methods) {
+	      scripts.push('	Public [' + key + ']');
+	    }
+	  }
+	  var batches = options.batches;
+	  if (batches) {
+	    for (key in batches) {
 	      scripts.push('	Public [' + key + ']');
 	    }
 	  }
 	  scripts = scripts.concat(['End Class', 'Function VBReactiveClassFactory' + id + '()', '	Set VBReactiveClassFactory' + id + ' = New VBReactiveClass' + id, 'End Function']);
 	  window.execScript(scripts.join('\n'), 'VBScript');
-	  return createJsClass(id, keys, Super, reactive, getSignals);
+	  return createJsClass(id, options);
 	}
-	function createJsClass(id, keys, Super, reactive, getSignals) {
+	function createJsClass(id, options) {
+	  var Super = options['super'];
+	  var reactive = options.reactive || returnArg;
 	  var Class = function () {
 	    var o = window['VBReactiveClassFactory' + id]();
-	    var target;
-	    if (getSignals) {
-	      target = getSignals.call(o, keys);
-	    } else {
-	      target = {};
-	      var i = keys.length;
-	      while (i--) {
-	        target[keys[i]] = signal(undefined);
+	    var key;
+	    var members = options.members;
+	    if (members) {
+	      for (key in members) {
+	        o[key] = members[key];
 	      }
 	    }
-	    o[TARGET] = target;
+	    var accessors = options.accessors;
+	    if (accessors) {
+	      for (key in accessors) {
+	        o["@@desc:" + key] = accessors[key];
+	      }
+	    }
+	    var target = o[TARGET] = {};
 	    o[REACTIVE] = reactive;
+	    var observables = options.observables;
+	    if (observables) {
+	      for (key in observables) {
+	        target[key] = signal(observables[key]);
+	      }
+	    }
+	    var com = options.computed;
+	    if (com) {
+	      for (key in com) {
+	        var desc = com[key];
+	        var getter = desc.get;
+	        var setter = desc.set;
+	        target[key] = computed(getter.bind(o), setter && setter.bind(o));
+	      }
+	    }
+	    var methods = options.methods;
+	    if (methods) {
+	      for (key in methods) {
+	        o[key] = methods[key].bind(o);
+	      }
+	    }
+	    var batches = options.batches;
+	    if (batches) {
+	      var keys = Object.keys(batches);
+	      keys.forEach(function (key) {
+	        var fn = batches[key];
+	        this[key] = function () {
+	          try {
+	            batchStart();
+	            fn.apply(o, arguments);
+	          } catch (e) {
+	            console.error(e);
+	          } finally {
+	            batchEnd();
+	          }
+	        };
+	      }, o);
+	    }
 	    o.constructor = Class;
 	    o.__proto__ = Class.prototype;
-	    Super.apply(o, arguments);
+	    if (Super && Super !== Object) {
+	      Super.apply(o, arguments);
+	    }
 	    return o;
 	  };
 	  if (Super && Super !== Object) {
-	    Object.setPrototypeOf(Class, Super);
 	    Class.prototype = Object.create(Super.prototype);
+	    Object.setPrototypeOf(Class, Super);
 	  }
 	  Class.prototype.constructor = Class;
 	  return Class;
@@ -921,7 +1146,9 @@
 	  var key = keys.join("\n");
 	  var Class = cache[key];
 	  if (!Class) {
-	    Class = createClass(o, reactive);
+	    Class = createClass({
+	      observables: o
+	    });
 	    cache[key] = Class;
 	  }
 	  var r = new Class();
@@ -947,7 +1174,7 @@
 	    if (isReactive.get(o)) {
 	      return o;
 	    }
-	    return record(o, reactive);
+	    return record(o);
 	  }
 	  return o;
 	}
@@ -1331,30 +1558,178 @@
 	  //  4  5  1  3  3  4  5  x
 	});
 
-	QUnit.test('class#key', function (assert) {
-	  var Class = createClass({
-	    a: 1,
+	var Class = createClass({
+	  members: {
+	    a: undefined
+	  },
+	  observables: {
 	    b: undefined
-	  });
+	  },
+	  accessors: {
+	    c: {
+	      get: function () {
+	        return this.a * 2;
+	      }
+	    },
+	    d: {
+	      get: function () {
+	        return this.a * 2;
+	      },
+	      set: function (v) {
+	        this.a = v / 2;
+	      }
+	    }
+	  },
+	  computed: {
+	    e: {
+	      get: function () {
+	        return this.b * 2;
+	      }
+	    },
+	    f: {
+	      get: function () {
+	        return this.b * 2;
+	      },
+	      set: function (v) {
+	        this.b = v / 2;
+	      }
+	    }
+	  },
+	  methods: {
+	    g: function () {
+	      this.a++;
+	    }
+	  },
+	  batches: {
+	    h: function () {
+	      this.b++;
+	      this.b++;
+	    }
+	  }
+	});
+	QUnit.test('class#dirct-member', function (assert) {
 	  var object = new Class();
+	  object.a = 1;
+	  object.b = 1;
 	  var i = 0;
-	  effect({}, function () {
+	  var a = effect({}, function () {
 	    return object.a;
 	  }, function () {
 	    i++;
 	  });
+	  assert.equal(a, 1);
 	  assert.equal(i, 0);
 	  object.a = 2;
-	  assert.equal(i, 1);
-	  var j = 0;
-	  effect({}, function () {
+	  assert.equal(i, 0);
+	});
+	QUnit.test('class#observable-key', function (assert) {
+	  var object = new Class();
+	  object.a = 1;
+	  object.b = 1;
+	  var i = 0;
+	  var b = effect({}, function () {
 	    return object.b;
+	  }, function () {
+	    i++;
+	  });
+	  assert.equal(b, 1);
+	  assert.equal(i, 0);
+	  object.b = 2;
+	  assert.equal(i, 1);
+	});
+	QUnit.test('class#dirct-accessor', function (assert) {
+	  var object = new Class();
+	  object.a = 1;
+	  object.b = 1;
+	  var i = 0;
+	  var c = effect({}, function () {
+	    return object.c;
+	  }, function () {
+	    i++;
+	  });
+	  assert.equal(object.a, 1);
+	  assert.equal(c, 2);
+	  assert.equal(i, 0);
+	  assert["throws"](function () {
+	    object.c = 4;
+	  });
+	  assert.equal(i, 0);
+	  var j = 0;
+	  var d = effect({}, function () {
+	    return object.d;
 	  }, function () {
 	    j++;
 	  });
+	  assert.equal(d, 2);
 	  assert.equal(j, 0);
-	  object.b = 2;
+	  object.d = 4;
+	  assert.equal(j, 0);
+	  assert.equal(object.d, 4);
+	  assert.equal(object.a, 2);
+	});
+	QUnit.test('class#computed-key', function (assert) {
+	  var object = new Class();
+	  object.a = 1;
+	  object.b = 1;
+	  var i = 0;
+	  var e = effect({}, function () {
+	    return object.e;
+	  }, function () {
+	    i++;
+	  });
+	  assert.equal(object.b, 1);
+	  assert.equal(e, 2);
+	  assert.equal(i, 0);
+	  assert["throws"](function () {
+	    object.e = 4;
+	  });
+	  assert.equal(i, 0);
+	  var j = 0;
+	  var f = effect({}, function () {
+	    return object.f;
+	  }, function () {
+	    j++;
+	  });
+	  assert.equal(f, 2);
+	  assert.equal(j, 0);
+	  object.f = 4;
 	  assert.equal(j, 1);
+	  assert.equal(object.f, 4);
+	  assert.equal(object.b, 2);
+	});
+	QUnit.test('class#method-bind', function (assert) {
+	  var object = new Class();
+	  object.a = 1;
+	  object.b = 1;
+	  var i = 0;
+	  var a = effect({}, function () {
+	    return object.a;
+	  }, function () {
+	    i++;
+	  });
+	  assert.equal(a, 1);
+	  assert.equal(i, 0);
+	  var g = object.g;
+	  g();
+	  assert.equal(object.a, 2);
+	  assert.equal(i, 0);
+	});
+	QUnit.test('class#batches-key', function (assert) {
+	  var object = new Class();
+	  object.a = 1;
+	  object.b = 1;
+	  var i = 0;
+	  var b = effect({}, function () {
+	    return object.b;
+	  }, function () {
+	    i++;
+	  });
+	  assert.equal(b, 1);
+	  assert.equal(i, 0);
+	  var h = object.h;
+	  h();
+	  assert.equal(object.b, 3);
+	  assert.equal(i, 1);
 	});
 
 })();

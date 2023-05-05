@@ -7,7 +7,9 @@ export function record(o, reactive) {
 	var key = keys.join("\n");
 	var Class = cache[key];
 	if(!Class) {
-		Class = createClass(o, reactive);
+		Class = createClass({
+			observables: o
+		}, reactive);
 		cache[key] = Class;
 	}
 	var r = new Class();
