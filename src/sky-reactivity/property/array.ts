@@ -11,6 +11,7 @@ export function array(arr: any[], reactive: Function) {
 	var i = arr.length;
 	var r = Object.create(ReactiveArray.prototype);
 	r[SIGNALS] = new Map();
+	r[SIGNAL] = new Signal(false);
 	r[LENGTH] = new Signal(i);
 	r[REACTIVE] = reactive;
 	while(i-- > 0) {

@@ -27,7 +27,8 @@ export function createClass(options): any {
 		}
 		if(observables) {
 			for(key in observables) {
-				target[key] = signal(o[key]);
+				let value = this[key];
+				target[key] = signal(reactive ? reactive(value, key) : value);
 				defineProperty(this, key, reactive);
 			}
 		}
