@@ -49,11 +49,22 @@ export function createClass<T>(options: ClassOptions): { new(): any; } {
 			}
 			if(com) {
 				for(key in com) {
-					var desc = com[key];
-					var getter = desc.get;
-					var setter = desc.set;
+					let desc = com[key];
+					let getter = desc.get;
+					let setter = desc.set;
 					target[key] = computed(getter.bind(this), setter && setter.bind(this));
 					defineProperty(this, key, reactive);
+				}
+			}
+			if(accessors) {
+				for(key in accessors) {
+					let accessor = accessors[key];
+					Object.defineProperty(this, key, {
+						enumerable: true,
+						configurable: false,
+						get: accessor.get,
+						set: accessor.set
+					});
 				}
 			}
 			if(methods) {
