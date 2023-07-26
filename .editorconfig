@@ -8,5 +8,7 @@ indent_style = tab
 indent_size = 4
 #是否删除行尾的空格
 trim_trailing_whitespace = true
+
+[*.json]
 #是否在文件的最后插入一个空行, npm会自动加在package.json，因此有必要加入
 insert_final_newline = true

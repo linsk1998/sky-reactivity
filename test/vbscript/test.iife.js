@@ -177,12 +177,18 @@
 	  }
 	}
 
-	var proto = !!Object$1.setPrototypeOf || '__proto__' in Object$1.prototype;
+	var setPrototypeOf$1 = Object$1.setPrototypeOf;
+
+	var proto = !!setPrototypeOf$1 || '__proto__' in Object.prototype;
 
 	function setPrototypeOf(o, proto) {
 	  o.__proto__ = proto;
 	  var key;
 	  for (key in proto) {
+	    switch (key) {
+	      case "__proto__":
+	        continue;
+	    }
 	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
 	      o[key] = proto[key];
 	    }
@@ -222,7 +228,7 @@
 	  if (obj == null) {
 	    throw new TypeError("Cannot convert undefined or null to object");
 	  }
-	  if (typeof obj !== "object") {
+	  if (typeof obj !== "object" && typeof obj !== "function") {
 	    obj = Object(obj);
 	  }
 	  if ('__proto__' in obj) {
@@ -697,13 +703,15 @@
 	  _proto.get = function () {
 	    function get() {
 	      if (currentKey) {
-	        this._callbacks.set(currentKey, currentCallback);
-	        var rel = relation.get(currentKey);
-	        if (!rel) {
-	          rel = new Map();
-	          relation.set(currentKey, rel);
+	        if (!this._callbacks.has(currentKey)) {
+	          this._callbacks.set(currentKey, currentCallback);
+	          var rel = relation.get(currentKey);
+	          if (!rel) {
+	            rel = new Map();
+	            relation.set(currentKey, rel);
+	          }
+	          rel.set(this, currentKey);
 	        }
-	        rel.set(this, currentKey);
 	      }
 	      return this.value;
 	    }

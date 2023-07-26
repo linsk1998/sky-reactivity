@@ -42,7 +42,8 @@ export function createClass<T>(options: ClassOptions): { new(): any; } {
 			}
 			if(observables) {
 				for(key in observables) {
-					target[key] = signal(this[key]);
+					let value = this[key];
+					target[key] = signal(reactive ? reactive(value, key) : value);
 					defineProperty(this, key, reactive);
 				}
 			}
@@ -63,10 +64,11 @@ export function createClass<T>(options: ClassOptions): { new(): any; } {
 			if(batches) {
 				for(let key in batches) {
 					let fn = batches[key];
-					this[key] = () => {
+					let me = this;
+					this[key] = function() {
 						try {
 							batchStart();
-							fn.apply(this, arguments);
+							fn.apply(me, arguments);
 						} catch(e) {
 							console.error(e);
 						} finally {

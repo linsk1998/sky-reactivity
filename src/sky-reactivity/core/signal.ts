@@ -11,13 +11,15 @@ export class Signal<T>{
 	}
 	public get(): T {
 		if(currentKey) {
-			this._callbacks.set(currentKey, currentCallback);
-			var rel = relation.get(currentKey);
-			if(!rel) {
-				rel = new Map();
-				relation.set(currentKey, rel);
+			if(!this._callbacks.has(currentKey)) {
+				this._callbacks.set(currentKey, currentCallback);
+				var rel = relation.get(currentKey);
+				if(!rel) {
+					rel = new Map();
+					relation.set(currentKey, rel);
+				}
+				rel.set(this, currentKey);
 			}
-			rel.set(this, currentKey);
 		}
 		return this.value;
 	}
