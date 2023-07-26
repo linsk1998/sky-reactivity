@@ -177,27 +177,22 @@
 	  }
 	}
 
-	var setPrototypeOf$1 = Object$1.setPrototypeOf;
+	var proto = !!Object$1.setPrototypeOf || '__proto__' in Object$1.prototype;
 
-	var proto = !!setPrototypeOf$1 || '__proto__' in Object.prototype;
-
-	function setPrototypeOf(o, proto) {
-	  o.__proto__ = proto;
+	function setPrototypeOf(obj, proto) {
+	  console.warn("ES3 do NOT support setPrototypeOf.");
+	  var o = create$1(proto);
 	  var key;
-	  for (key in proto) {
-	    switch (key) {
-	      case "__proto__":
-	        continue;
-	    }
-	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
-	      o[key] = proto[key];
+	  for (key in obj) {
+	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+	      o[key] = obj[key];
 	    }
 	  }
 	  var i = dontEnums.length;
 	  while (i-- > 0) {
 	    key = dontEnums[i];
-	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
-	      o[key] = proto[key];
+	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+	      o[key] = obj[key];
 	    }
 	  }
 	  return o;
@@ -228,7 +223,7 @@
 	  if (obj == null) {
 	    throw new TypeError("Cannot convert undefined or null to object");
 	  }
-	  if (typeof obj !== "object" && typeof obj !== "function") {
+	  if (typeof obj !== "object") {
 	    obj = Object(obj);
 	  }
 	  if ('__proto__' in obj) {
