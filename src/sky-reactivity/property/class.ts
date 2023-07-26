@@ -41,6 +41,17 @@ export function createClass(options): any {
 				defineProperty(this, key, reactive);
 			}
 		}
+		if(accessors) {
+			for(key in accessors) {
+				let accessor = accessors[key];
+				Object.defineProperty(this, key, {
+					enumerable: true,
+					configurable: false,
+					get: accessor.get,
+					set: accessor.set
+				});
+			}
+		}
 		if(methods) {
 			for(key in methods) {
 				o[key] = methods[key].bind(o);
