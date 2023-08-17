@@ -132,12 +132,6 @@ function createJsClass(id, options) {
 	var Class = function() {
 		var o = window['VBReactiveClassFactory' + id]();
 		var key;
-		var members = options.members;
-		if(members) {
-			for(key in members) {
-				o[key] = members[key];
-			}
-		}
 		var accessors = options.accessors;
 		if(accessors) {
 			for(key in accessors) {

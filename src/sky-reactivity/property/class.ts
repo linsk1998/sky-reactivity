@@ -15,16 +15,16 @@ export function createClass(options): any {
 	var batches = options.batches;
 	var Class = function() {
 		var o = this;
+		if(members) {
+			for(key in members) {
+				this[key] = undefined;
+			}
+		}
 		if(Super && Super !== Object) {
 			Super.apply(o, arguments);
 		}
 		var target = o[TARGET] = {};
 		var key: string;
-		if(members) {
-			for(key in members) {
-				this[key] = members[key];
-			}
-		}
 		if(observables) {
 			for(key in observables) {
 				let value = this[key];
