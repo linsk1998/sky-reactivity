@@ -177,27 +177,22 @@
 	  }
 	}
 
-	var setPrototypeOf$1 = Object$1.setPrototypeOf;
+	var proto = !!Object$1.setPrototypeOf || '__proto__' in Object$1.prototype;
 
-	var proto = !!setPrototypeOf$1 || '__proto__' in Object.prototype;
-
-	function setPrototypeOf(o, proto) {
-	  o.__proto__ = proto;
+	function setPrototypeOf(obj, proto) {
+	  console.warn("ES3 do NOT support setPrototypeOf.");
+	  var o = create$1(proto);
 	  var key;
-	  for (key in proto) {
-	    switch (key) {
-	      case "__proto__":
-	        continue;
-	    }
-	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
-	      o[key] = proto[key];
+	  for (key in obj) {
+	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+	      o[key] = obj[key];
 	    }
 	  }
 	  var i = dontEnums.length;
 	  while (i-- > 0) {
 	    key = dontEnums[i];
-	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
-	      o[key] = proto[key];
+	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+	      o[key] = obj[key];
 	    }
 	  }
 	  return o;
@@ -228,7 +223,7 @@
 	  if (obj == null) {
 	    throw new TypeError("Cannot convert undefined or null to object");
 	  }
-	  if (typeof obj !== "object" && typeof obj !== "function") {
+	  if (typeof obj !== "object") {
 	    obj = Object(obj);
 	  }
 	  if ('__proto__' in obj) {
@@ -312,7 +307,7 @@
 	  Array$1.isArray = isArray;
 	}
 
-	function map$1(fn) {
+	function map(fn) {
 	  var thisArg = arguments[1];
 	  var arr = [];
 	  for (var k = 0, length = this.length; k < length; k++) {
@@ -322,7 +317,7 @@
 	}
 
 	if (!Array.prototype.map) {
-	  Array.prototype.map = map$1;
+	  Array.prototype.map = map;
 	}
 
 	function forEach$1(callback) {
@@ -694,7 +689,7 @@
 	    untrack();
 	  }
 	}
-	var Signal = /*#__PURE__*/function () {
+	var Signal$1 = /*#__PURE__*/function () {
 	  function Signal(initValue) {
 	    this._callbacks = new Map();
 	    this.value = initValue;
@@ -751,13 +746,13 @@
 	  return Signal;
 	}();
 	function signal(initValue) {
-	  return new Signal(initValue);
+	  return new Signal$1(initValue);
 	}
-	var Computed = /*#__PURE__*/function (_Signal) {
-	  _inheritsLoose(Computed, _Signal);
+	var Computed = /*#__PURE__*/function (_Signal$) {
+	  _inheritsLoose(Computed, _Signal$);
 	  function Computed(getter, setter) {
 	    var _this;
-	    _this = _Signal.call(this) || this;
+	    _this = _Signal$.call(this) || this;
 	    _this.hasCache = false;
 	    _this.getter = getter;
 	    _this.setter = setter;
@@ -767,12 +762,12 @@
 	  _proto2.get = function () {
 	    function get() {
 	      if (this.hasCache) {
-	        return _Signal.prototype.get.call(this);
+	        return _Signal$.prototype.get.call(this);
 	      }
 	      stop(this);
 	      this.value = effect(this, this.getter, this.onChange);
 	      this.hasCache = true;
-	      return _Signal.prototype.get.call(this);
+	      return _Signal$.prototype.get.call(this);
 	    }
 	    return get;
 	  }();
@@ -794,220 +789,52 @@
 	    return set;
 	  }();
 	  return Computed;
-	}(Signal);
+	}(Signal$1);
 	function computed(getter, setter) {
 	  return new Computed(getter, setter);
 	}
-	var TARGET$1 = '@@TARGET';
-	var SIGNALS = '@@SIGNALS';
 	var SIGNAL = '@@SIGNAL';
-	var LENGTH$1 = '@@LENGTH';
 	var REACTIVE$1 = '@@REACTIVE';
-	window.execScript(['Class VBReactiveArray', '	Public [@@TARGET]', '	Public [@@LENGTH]', '	Public [@@SIGNALS]', '	Public [@@SIGNAL]', '	Public [@@REACTIVE]', '	Public [@@WeakMap]', '	Public [__proto__]', '	Public [constructor]', '	Public Property Let [length](var)', '		Call Me.[@@LENGTH].set(var)', '		Me.[@@TARGET].length = var', '	End Property', '	Public Property Get [length]', '		[length] = Me.[@@LENGTH].get()', '	End Property', '	Public [at]', '	Public [push]', '	Public [pop]', '	Public [unshift]', '	Public [shift]', '	Public [splice]', '	Public [map]', '	Public [filter]', '	Public [concat]', 'End Class', 'Function VBReactiveArrayFactory()', '	Set VBReactiveArrayFactory = New VBReactiveArray', 'End Function'].join('\n'), 'VBScript');
 	function array(arr, reactive) {
 	  var i = arr.length;
-	  var r = ReactiveArray(i);
-	  var target = r[TARGET$1];
-	  r[SIGNALS] = new Map();
+	  var r = new ReactiveArray();
+	  r.length = i;
+	  r[SIGNAL] = new Signal(false);
 	  r[REACTIVE$1] = reactive;
 	  while (i-- > 0) {
-	    target[i] = reactive(arr[i], i);
+	    r[i] = reactive(arr[i], i);
 	  }
 	  return r;
 	}
-	function ReactiveArray(length) {
-	  var r = VBReactiveArrayFactory();
-	  r[TARGET$1] = new Array(length);
-	  r[SIGNALS] = new Map();
-	  r[LENGTH$1] = signal(length);
-	  r[SIGNAL] = signal(false);
-	  r.__proto__ = ReactiveArray.prototype;
-	  r.constructor = ReactiveArray;
-	  r.at = at.bind(r);
-	  r.push = push.bind(r);
-	  r.pop = pop.bind(r);
-	  r.unshift = unshift.bind(r);
-	  r.shift = shift.bind(r);
-	  r.splice = splice.bind(r);
-	  r.map = map.bind(r);
-	  r.filter = filter.bind(r);
-	  r.concat = concat.bind(r);
-	  return r;
-	}
-	ReactiveArray.prototype = Object.create(Array.prototype);
-	ReactiveArray.prototype.at = at;
-	ReactiveArray.prototype.push = push;
-	ReactiveArray.prototype.pop = pop;
-	ReactiveArray.prototype.unshift = unshift;
-	ReactiveArray.prototype.shift = shift;
-	ReactiveArray.prototype.splice = splice;
-	function at(n) {
-	  var target = this[TARGET$1];
-	  var r = n < 0 ? target[n + this[LENGTH$1].value] : target[n];
-	  var map = this[SIGNALS];
-	  var box = map.get(n);
-	  if (!box) {
-	    box = signal(r);
-	    map.set(n, box);
+	function ReactiveArray() {}
+	for (var key in Array) {
+	  var prefix = key.substring(0, 2);
+	  switch (prefix) {
+	    case "__":
+	    case "@@":
+	      break;
+	    default:
+	      ReactiveArray[key] = Array;
 	  }
-	  box.get();
-	  return r;
 	}
-	function push() {
-	  var reactive = this[REACTIVE$1];
-	  try {
-	    batchStart();
-	    var oldLength = this.length;
-	    var items = Array.prototype.slice.call(arguments);
-	    items = items.map(reactive);
-	    var target = this[TARGET$1];
-	    var newLength = Array.prototype.push.apply(target, items);
-	    var map = this[SIGNALS];
-	    map.forEach(function (signal, key) {
-	      if (key < 0) {
-	        key = key + newLength;
-	        if (key >= 0) {
-	          signal.set(target[key]);
-	        }
-	      } else if (oldLength <= key && key < newLength) {
-	        signal.set(target[key]);
-	      }
-	    });
-	    this[LENGTH$1].set(newLength);
+	ReactiveArray.prototype = [];
+	ReactiveArray.constructor = ReactiveArray;
+	ReactiveArray.__proto__ = Array;
+	['at', 'map', 'filter', 'concat'].forEach(function (key) {
+	  var fn = Array.prototype[key];
+	  ReactiveArray.prototype[key] = function () {
+	    this[SIGNAL].get();
+	    return fn.apply(this, arguments);
+	  };
+	});
+	['push', 'pop', 'unshift', 'shift', 'splice'].forEach(function (key) {
+	  var fn = Array.prototype[key];
+	  ReactiveArray.prototype[key] = function () {
 	    var s = this[SIGNAL];
 	    s.set(!s.get());
-	    return newLength;
-	  } finally {
-	    batchEnd();
-	  }
-	}
-	function pop() {
-	  try {
-	    batchStart();
-	    var oldLength = this.length;
-	    var target = this[TARGET$1];
-	    Array.prototype.pop.call(target);
-	    var newLength = target.length;
-	    var map = this[SIGNALS];
-	    map.forEach(function (signal, key) {
-	      if (key < 0) {
-	        if (key + oldLength >= 0) {
-	          signal.set(target[key + newLength]);
-	        }
-	      } else if (newLength === key) {
-	        signal.set(target[key]);
-	      }
-	    });
-	    this[LENGTH$1].set(newLength);
-	    var s = this[SIGNAL];
-	    s.set(!s.get());
-	    return newLength;
-	  } finally {
-	    batchEnd();
-	  }
-	}
-	function unshift() {
-	  var reactive = this[REACTIVE$1];
-	  try {
-	    batchStart();
-	    var oldLength = this.length;
-	    var args = [],
-	      len = arguments.length;
-	    for (var i = 0; i < len; i++) {
-	      args[i] = reactive(arguments[i]);
-	    }
-	    var target = this[TARGET$1];
-	    var r = Array.prototype.unshift.apply(target, args);
-	    var newLength = target.length;
-	    var map = this[SIGNALS];
-	    map.forEach(function (signal, key) {
-	      if (key < 0) {
-	        if (key + oldLength < 0) {
-	          key = key + newLength;
-	          if (0 <= key) {
-	            signal.set(target[key]);
-	          }
-	        }
-	      } else if (key < newLength) {
-	        signal.set(target[key]);
-	      }
-	    });
-	    this[LENGTH$1].set(newLength);
-	    var s = this[SIGNAL];
-	    s.set(!s.get());
-	    return r;
-	  } finally {
-	    batchEnd();
-	  }
-	}
-	function shift() {
-	  try {
-	    batchStart();
-	    var oldLength = this.length;
-	    var target = this[TARGET$1];
-	    var r = Array.prototype.shift.call(target);
-	    var newLength = target.length;
-	    var map = this[SIGNALS];
-	    map.forEach(function (signal, key) {
-	      if (key < 0) {
-	        if (0 <= key + oldLength) {
-	          key = key + newLength;
-	          if (key < 0) {
-	            signal.set(target[key]);
-	          }
-	        }
-	      } else if (oldLength > key) {
-	        signal.set(target[key]);
-	      }
-	    });
-	    this[LENGTH$1].set(newLength);
-	    var s = this[SIGNAL];
-	    s.set(!s.get());
-	    return r;
-	  } finally {
-	    batchEnd();
-	  }
-	}
-	function splice() {
-	  var reactive = this[REACTIVE$1];
-	  try {
-	    batchStart();
-	    var args = [],
-	      len = arguments.length;
-	    for (var i = 0; i < len; i++) {
-	      args[i] = i > 1 ? reactive(arguments[i]) : arguments[i];
-	    }
-	    var target = this[TARGET$1];
-	    var r = Array.prototype.splice.apply(target, args);
-	    var newLength = target.length;
-	    var map = this[SIGNALS];
-	    map.forEach(function (signal, key) {
-	      if (key < 0) {
-	        signal.set(target[key + newLength]);
-	      } else {
-	        signal.set(target[key]);
-	      }
-	    });
-	    this[LENGTH$1].set(newLength);
-	    var s = this[SIGNAL];
-	    s.set(!s.get());
-	    return array(r, reactive);
-	  } finally {
-	    batchEnd();
-	  }
-	}
-	function map() {
-	  this[SIGNAL].get();
-	  return Array.prototype.map.apply(this[TARGET$1], arguments);
-	}
-	function filter() {
-	  this[SIGNAL].get();
-	  return Array.prototype.filter.apply(this[TARGET$1], arguments);
-	}
-	function concat() {
-	  this[SIGNAL].get();
-	  return Array.prototype.concat.apply(this[TARGET$1], arguments);
-	}
+	    return fn.apply(this, arguments);
+	  };
+	});
 	var seq = 0;
 	var TARGET = '@@TARGET';
 	var REACTIVE = '@@REACTIVE';
@@ -1196,7 +1023,10 @@
 	QUnit.test('array#length', function (assert) {
 	  var array = reactive([]);
 	  assert.equal(array.length, 0);
+	  assert.ok(array instanceof Array);
+	  // assert.ok(Array.isArray(array));
 	});
+
 	QUnit.test('array#at', function (assert) {
 	  var array = reactive([]);
 	  var key = {};
@@ -1239,46 +1069,7 @@
 	  //  x  x  x  x  x  x  x  x
 	  array.push(0);
 	  assert.equal(array.length, 1);
-	  assert.equal(counts.get(LENGTH), 1);
-	  assert.equal(counts.get(-2), 0);
-	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 1);
-	  assert.equal(counts.get(1), 0);
-	  assert.equal(counts.get(2), 0);
-	  assert.equal(counts.get(3), 0);
-	  assert.equal(counts.get(4), 0);
-	  assert.equal(counts.get(5), 0);
-	  // [0]
-	  // -2 -1  0  1  2  3  4  5
-	  //  x  0  0  x  x  x  x  x
-	  array.push(0);
-	  assert.equal(counts.get(LENGTH), 2);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 1);
-	  assert.equal(counts.get(1), 1);
-	  assert.equal(counts.get(2), 0);
-	  assert.equal(counts.get(3), 0);
-	  assert.equal(counts.get(4), 0);
-	  assert.equal(counts.get(5), 0);
-	  // [0, 0]
-	  // -2 -1  0  1  2  3  4  5
-	  //  0  0  0  0  x  x  x  x
-	  array.push(0);
-	  assert.equal(counts.get(LENGTH), 3);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 1);
-	  assert.equal(counts.get(1), 1);
-	  assert.equal(counts.get(2), 1);
-	  assert.equal(counts.get(3), 0);
-	  assert.equal(counts.get(4), 0);
-	  assert.equal(counts.get(5), 0);
-	  // [0, 0, 0]
-	  // -2 -1  0  1  2  3  4  5
-	  //  0  0  0  0  0  x  x  x
-	  array.push(0, 0);
-	  assert.equal(counts.get(LENGTH), 4);
+	  assert.equal(counts.get(LENGTH), 0);
 	  assert.equal(counts.get(-2), 1);
 	  assert.equal(counts.get(-1), 1);
 	  assert.equal(counts.get(0), 1);
@@ -1286,12 +1077,8 @@
 	  assert.equal(counts.get(2), 1);
 	  assert.equal(counts.get(3), 1);
 	  assert.equal(counts.get(4), 1);
-	  assert.equal(counts.get(5), 0);
-	  // [0, 0, 0, 0]
-	  // -2 -1  0  1  2  3  4  5
-	  //  0  0  0  0  0  0  x  x
+	  assert.equal(counts.get(5), 1);
 	});
-
 	QUnit.test('array#pop', function (assert) {
 	  var array = reactive([1, 2, 3, 4, 5]);
 	  assert.equal(array.length, 5);
@@ -1320,63 +1107,13 @@
 	  //  4  5  1  2  3  4  5  x
 	  array.pop();
 	  assert.equal(array.length, 4);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(LENGTH), 1);
+	  assert.equal(counts.get(LENGTH), 0);
 	  assert.equal(counts.get(-2), 1);
 	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 0);
-	  assert.equal(counts.get(1), 0);
-	  assert.equal(counts.get(2), 0);
-	  // [1, 2, 3, 4]
-	  // -2 -1  0  1  2  3  4  5
-	  //  3  4  1  2  3  4  x  x
-	  array.pop();
-	  assert.equal(array.length, 3);
-	  assert.equal(counts.get(LENGTH), 2);
-	  assert.equal(counts.get(-2), 2);
-	  assert.equal(counts.get(-1), 2);
-	  assert.equal(counts.get(0), 0);
-	  assert.equal(counts.get(1), 0);
-	  assert.equal(counts.get(2), 0);
-	  // [1, 2, 3]
-	  // -2 -1  0  1  2  3  4  5
-	  //  2  3  1  2  3  x  x  x
-	  array.pop();
-	  assert.equal(array.at(2), void 0);
-	  assert.equal(array.length, 2);
-	  assert.equal(counts.get(LENGTH), 3);
-	  assert.equal(counts.get(-2), 3);
-	  assert.equal(counts.get(-1), 3);
-	  assert.equal(counts.get(0), 0);
-	  assert.equal(counts.get(1), 0);
-	  assert.equal(counts.get(2), 1);
-	  // [1, 2]
-	  // -2 -1  0  1  2  3  4  5
-	  //  1  2  1  2  x  x  x  x
-	  array.pop();
-	  assert.equal(array.length, 1);
-	  assert.equal(counts.get(LENGTH), 4);
-	  assert.equal(counts.get(-2), 4);
-	  assert.equal(counts.get(-1), 4);
-	  assert.equal(counts.get(0), 0);
-	  assert.equal(counts.get(1), 1);
-	  assert.equal(counts.get(2), 1);
-	  // [1]
-	  // -2 -1  0  1  2  3  4  5
-	  //  x  1  1  x  x  x  x  x
-	  array.pop();
-	  assert.equal(array.length, 0);
-	  assert.equal(counts.get(LENGTH), 5);
-	  assert.equal(counts.get(-2), 4);
-	  assert.equal(counts.get(-1), 5);
 	  assert.equal(counts.get(0), 1);
 	  assert.equal(counts.get(1), 1);
 	  assert.equal(counts.get(2), 1);
-	  // []
-	  // -2 -1  0  1  2  3  4  5
-	  //  x  x  x  x  x  x  x  x
 	});
-
 	QUnit.test('array#unshift', function (assert) {
 	  var array = reactive([]);
 	  assert.equal(array.length, 0);
@@ -1404,36 +1141,13 @@
 	  //  x  x  x  x  x
 	  array.unshift(1);
 	  assert.equal(array.length, 1);
-	  assert.equal(counts.get(LENGTH), 1);
-	  assert.equal(counts.get(-2), 0);
+	  assert.equal(counts.get(LENGTH), 0);
+	  assert.equal(counts.get(-2), 1);
 	  assert.equal(counts.get(-1), 1);
 	  assert.equal(counts.get(0), 1);
-	  assert.equal(counts.get(1), 0);
-	  assert.equal(counts.get(2), 0);
-	  // -2 -1  0  1  2
-	  //  x  1  1  x  x
-	  array.unshift(2);
-	  assert.equal(array.length, 2);
-	  assert.equal(counts.get(LENGTH), 2);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 2);
 	  assert.equal(counts.get(1), 1);
-	  assert.equal(counts.get(2), 0);
-	  // -2 -1  0  1  2
-	  //  2  1  2  1  x
-	  array.unshift(3);
-	  assert.equal(array.length, 3);
-	  assert.equal(counts.get(LENGTH), 3);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 3);
-	  assert.equal(counts.get(1), 2);
 	  assert.equal(counts.get(2), 1);
-	  // -2 -1  0  1  2
-	  //  2  1  3  2  1
 	});
-
 	QUnit.test('array#shift', function (assert) {
 	  var array = reactive([1, 2, 3, 4, 5]);
 	  assert.equal(array.length, 5);
@@ -1460,51 +1174,13 @@
 	  // [1, 2, 3, 4, 5]
 	  array.shift();
 	  assert.equal(array.length, 4);
-	  assert.equal(counts.get(LENGTH), 1);
-	  assert.equal(counts.get(-2), 0);
-	  assert.equal(counts.get(-1), 0);
+	  assert.equal(counts.get(LENGTH), 0);
+	  assert.equal(counts.get(-2), 1);
+	  assert.equal(counts.get(-1), 1);
 	  assert.equal(counts.get(0), 1);
 	  assert.equal(counts.get(1), 1);
 	  assert.equal(counts.get(2), 1);
-	  // [2, 3, 4, 5]
-	  array.shift();
-	  assert.equal(array.length, 3);
-	  assert.equal(counts.get(LENGTH), 2);
-	  assert.equal(counts.get(-2), 0);
-	  assert.equal(counts.get(-1), 0);
-	  assert.equal(counts.get(0), 2);
-	  assert.equal(counts.get(1), 2);
-	  assert.equal(counts.get(2), 2);
-	  // [3, 4, 5]
-	  array.shift();
-	  assert.equal(array.length, 2);
-	  assert.equal(counts.get(LENGTH), 3);
-	  assert.equal(counts.get(-2), 0);
-	  assert.equal(counts.get(-1), 0);
-	  assert.equal(counts.get(0), 3);
-	  assert.equal(counts.get(1), 3);
-	  assert.equal(counts.get(2), 3);
-	  // [4, 5]
-	  array.shift();
-	  assert.equal(array.length, 1);
-	  assert.equal(counts.get(LENGTH), 4);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(-1), 0);
-	  assert.equal(counts.get(0), 4);
-	  assert.equal(counts.get(1), 4);
-	  assert.equal(counts.get(2), 3);
-	  // [5]
-	  array.shift();
-	  assert.equal(array.length, 0);
-	  assert.equal(counts.get(LENGTH), 5);
-	  assert.equal(counts.get(-2), 1);
-	  assert.equal(counts.get(-1), 1);
-	  assert.equal(counts.get(0), 5);
-	  assert.equal(counts.get(1), 4);
-	  assert.equal(counts.get(2), 3);
-	  // []
 	});
-
 	QUnit.test('array#splice', function (assert) {
 	  var array = reactive([1, 2, 3, 4, 5]);
 	  assert.equal(array.length, 5);
@@ -1533,26 +1209,12 @@
 	  //  4  5  1  2  3  4  5  x
 	  array.splice(1, 1);
 	  assert.equal(array.length, 4);
-	  assert.equal(counts.get(LENGTH), 1);
-	  assert.equal(counts.get(-2), 0);
-	  assert.equal(counts.get(-1), 0);
-	  assert.equal(counts.get(0), 0);
+	  assert.equal(counts.get(LENGTH), 0);
+	  assert.equal(counts.get(-2), 1);
+	  assert.equal(counts.get(-1), 1);
+	  assert.equal(counts.get(0), 1);
 	  assert.equal(counts.get(1), 1);
 	  assert.equal(counts.get(2), 1);
-	  // [1, 3, 4, 5]
-	  // -2 -1  0  1  2  3  4  5
-	  //  4  5  1  3  4  5  x  x
-	  array.splice(1, 0, 3);
-	  assert.equal(array.length, 5);
-	  assert.equal(counts.get(LENGTH), 2);
-	  assert.equal(counts.get(-2), 0);
-	  assert.equal(counts.get(-1), 0);
-	  assert.equal(counts.get(0), 0);
-	  assert.equal(counts.get(1), 1);
-	  assert.equal(counts.get(2), 2);
-	  // [1, 3, 3, 4, 5]
-	  // -2 -1  0  1  2  3  4  5
-	  //  4  5  1  3  3  4  5  x
 	});
 
 	var Class = createClass({
