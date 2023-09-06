@@ -37,7 +37,9 @@ export function createClass<T>(options: ClassOptions): { new(): any; } {
 			var key: string;
 			if(members) {
 				for(key in members) {
-					this[key] = members[key];
+					if(!(key in this)) {
+						this[key] = undefined;
+					}
 				}
 			}
 			if(observables) {
