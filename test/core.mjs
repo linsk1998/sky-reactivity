@@ -144,7 +144,7 @@ describe("box", function() {
 			assert.equal(a.get(), 2);
 			assert.equal(c.get(), 4);
 			assert.equal(i, 2);
-			assert.equal(j, 1);
+			assert.equal(j, 0);
 		});
 		assert.equal(j, 1);
 	});

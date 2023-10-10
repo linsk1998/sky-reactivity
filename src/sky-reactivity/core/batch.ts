@@ -18,7 +18,8 @@ export function batchStart() {
 	deep++;
 }
 export function batchEnd() {
-	if(deep === 1) {
+	deep--;
+	if(deep === 0) {
 		try {
 			actionsToDo.forEach(notify);
 		} catch(e) {
@@ -27,7 +28,6 @@ export function batchEnd() {
 			actionsToDo.clear();
 		}
 	}
-	deep--;
 }
 
 export function collectCallback(callback: Function, key: any) {
