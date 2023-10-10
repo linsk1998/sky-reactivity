@@ -120,4 +120,32 @@ describe("box", function() {
 		assert.equal(i, 1);
 		assert.equal(j, 1);
 	});
+	it("computed-action", function() {
+		var i = 0;
+		var j = 0;
+		var a = new Signal(1);
+		var b = new Signal(1);
+		var c = new Computed(() => {
+			i++;
+			return a.get() * b.get();
+		});
+		effect({}, () => {
+			c.get();
+		}, () => {
+			j++;
+		});
+		assert.equal(j, 0);
+		batch(() => {
+			assert.equal(i, 1);
+			a.set(2);
+			assert.equal(i, 1);
+			b.set(2);
+			assert.equal(i, 1);
+			assert.equal(a.get(), 2);
+			assert.equal(c.get(), 4);
+			assert.equal(i, 2);
+			assert.equal(j, 1);
+		});
+		assert.equal(j, 1);
+	});
 });
