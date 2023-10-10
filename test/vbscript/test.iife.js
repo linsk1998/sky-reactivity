@@ -177,22 +177,27 @@
 	  }
 	}
 
-	var proto = !!Object$1.setPrototypeOf || '__proto__' in Object$1.prototype;
+	var setPrototypeOf$1 = Object$1.setPrototypeOf;
 
-	function setPrototypeOf(obj, proto) {
-	  console.warn("ES3 do NOT support setPrototypeOf.");
-	  var o = create$1(proto);
+	var proto = !!setPrototypeOf$1 || '__proto__' in Object.prototype;
+
+	function setPrototypeOf(o, proto) {
+	  o.__proto__ = proto;
 	  var key;
-	  for (key in obj) {
-	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-	      o[key] = obj[key];
+	  for (key in proto) {
+	    switch (key) {
+	      case "__proto__":
+	        continue;
+	    }
+	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
+	      o[key] = proto[key];
 	    }
 	  }
 	  var i = dontEnums.length;
 	  while (i-- > 0) {
 	    key = dontEnums[i];
-	    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-	      o[key] = obj[key];
+	    if (Object.prototype.hasOwnProperty.call(proto, key)) {
+	      o[key] = proto[key];
 	    }
 	  }
 	  return o;
@@ -223,7 +228,7 @@
 	  if (obj == null) {
 	    throw new TypeError("Cannot convert undefined or null to object");
 	  }
-	  if (typeof obj !== "object") {
+	  if (typeof obj !== "object" && typeof obj !== "function") {
 	    obj = Object(obj);
 	  }
 	  if ('__proto__' in obj) {
@@ -667,18 +672,20 @@
 	}
 	var keyStack = [];
 	var callbackStack = [];
+	var computedStack = [];
 	var currentKey;
 	var currentCallback;
+	var currentComputed;
 	function track(key, callback) {
 	  currentKey = key;
-	  currentCallback = callback;
 	  keyStack.push(key);
+	  currentCallback = callback;
 	  callbackStack.push(callback);
 	}
 	function untrack() {
 	  keyStack.pop();
-	  callbackStack.pop();
 	  currentKey = keyStack[keyStack.length - 1];
+	  callbackStack.pop();
 	  currentCallback = callbackStack[callbackStack.length - 1];
 	}
 	function effect(key, collect, callback) {
@@ -689,14 +696,30 @@
 	    untrack();
 	  }
 	}
+	function effectComputed(key, collect, callback) {
+	  try {
+	    track(key, callback);
+	    currentComputed = key;
+	    computedStack.push(key);
+	    return collect.call(key);
+	  } finally {
+	    untrack();
+	    computedStack.pop();
+	    currentComputed = computedStack[computedStack.length - 1];
+	  }
+	}
 	var Signal$1 = /*#__PURE__*/function () {
 	  function Signal(initValue) {
 	    this._callbacks = new Map();
+	    this._computeds = new Set();
 	    this.value = initValue;
 	  }
 	  var _proto = Signal.prototype;
 	  _proto.get = function () {
 	    function get() {
+	      if (currentComputed) {
+	        this._computeds.add(currentKey);
+	      }
 	      if (currentKey) {
 	        if (!this._callbacks.has(currentKey)) {
 	          this._callbacks.set(currentKey, currentCallback);
@@ -723,6 +746,7 @@
 	  }();
 	  _proto.notify = function () {
 	    function notify() {
+	      this._computeds.forEach(reset);
 	      if (deep) {
 	        this._callbacks.forEach(collectCallback);
 	      } else {
@@ -739,12 +763,16 @@
 	  }();
 	  _proto.unobserve = function () {
 	    function unobserve(key) {
+	      this._computeds["delete"](key);
 	      this._callbacks["delete"](key);
 	    }
 	    return unobserve;
 	  }();
 	  return Signal;
 	}();
+	function reset(computed) {
+	  computed.reset();
+	}
 	function signal(initValue) {
 	  return new Signal$1(initValue);
 	}
@@ -765,15 +793,20 @@
 	        return _Signal$.prototype.get.call(this);
 	      }
 	      stop(this);
-	      this.value = effect(this, this.getter, this.onChange);
+	      this.value = effectComputed(this, this.getter, this.onChange);
 	      this.hasCache = true;
 	      return _Signal$.prototype.get.call(this);
 	    }
 	    return get;
 	  }();
+	  _proto2.reset = function () {
+	    function reset() {
+	      this.hasCache = false;
+	    }
+	    return reset;
+	  }();
 	  _proto2.onChange = function () {
 	    function onChange() {
-	      this.hasCache = false;
 	      this.notify();
 	    }
 	    return onChange;
