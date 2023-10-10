@@ -1,4 +1,4 @@
-import { effect } from "./effect";
+import { effectComputed } from "./effect";
 import { Signal } from "./signal";
 import { stop } from "./stop";
 
@@ -16,12 +16,14 @@ export class Computed<T> extends Signal<T> {
 			return super.get();
 		}
 		stop(this);
-		this.value = effect(this, this.getter, this.onChange);
+		this.value = effectComputed(this, this.getter, this.onChange);
 		this.hasCache = true;
 		return super.get();
 	}
-	protected onChange() {
+	public reset() {
 		this.hasCache = false;
+	}
+	protected onChange() {
 		this.notify();
 	}
 	public set(value: T) {
