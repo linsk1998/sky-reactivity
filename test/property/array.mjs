@@ -9,7 +9,7 @@ describe("property", function() {
 			var array = reactive([]);
 			assert.equal(array.length, 0);
 			assert.ok(array instanceof Array);
-			// assert.ok(Array.isArray(array));
+			assert.ok(Array.isArray(array));
 		});
 		it("at", function() {
 			var array = reactive([]);

@@ -601,14 +601,14 @@
 	  window.Map = createMap();
 	}
 
-	var slice = Array.prototype.slice;
+	var slice$1 = Array.prototype.slice;
 
 	if (!Function.prototype.bind) {
 	  Function.prototype.bind = function (context) {
 	    var self = this,
-	      args = slice.call(arguments, 1);
+	      args = slice$1.call(arguments, 1);
 	    return function () {
-	      return self.apply(context, args.concat(slice.call(arguments)));
+	      return self.apply(context, args.concat(slice$1.call(arguments)));
 	    };
 	  };
 	}
@@ -823,46 +823,63 @@
 	}
 	var SIGNAL = '@@SIGNAL';
 	var REACTIVE$1 = '@@REACTIVE';
-	function array(arr, reactive) {
-	  var i = arr.length;
-	  var r = new ReactiveArray();
-	  r.length = i;
-	  r[SIGNAL] = new Signal(false);
-	  r[REACTIVE$1] = reactive;
-	  while (i-- > 0) {
-	    r[i] = reactive(arr[i], i);
-	  }
-	  return r;
-	}
-	function ReactiveArray() {}
-	for (var key in Array) {
-	  var prefix = key.substring(0, 2);
-	  switch (prefix) {
-	    case "__":
-	    case "@@":
-	      break;
-	    default:
-	      ReactiveArray[key] = Array;
-	  }
-	}
-	ReactiveArray.prototype = [];
-	ReactiveArray.constructor = ReactiveArray;
-	ReactiveArray.__proto__ = Array;
+	var slice = Array.prototype.slice;
+	var prototype = Object.create(Array.prototype);
 	['at', 'map', 'filter', 'concat'].forEach(function (key) {
 	  var fn = Array.prototype[key];
-	  ReactiveArray.prototype[key] = function () {
+	  prototype[key] = function () {
 	    this[SIGNAL].get();
 	    return fn.apply(this, arguments);
 	  };
 	});
-	['push', 'pop', 'unshift', 'shift', 'splice'].forEach(function (key) {
+	['push', 'unshift'].forEach(function (key) {
 	  var fn = Array.prototype[key];
-	  ReactiveArray.prototype[key] = function () {
+	  prototype[key] = function () {
+	    var reactive = this[REACTIVE$1];
+	    var items = slice.call(arguments);
+	    items = items.map(reactive);
+	    var s = this[SIGNAL];
+	    s.set(!s.get());
+	    return fn.apply(this, items);
+	  };
+	});
+	['pop', 'shift'].forEach(function (key) {
+	  var fn = Array.prototype[key];
+	  prototype[key] = function () {
 	    var s = this[SIGNAL];
 	    s.set(!s.get());
 	    return fn.apply(this, arguments);
 	  };
 	});
+	var splice = Array.prototype.splice;
+	prototype.splice = function () {
+	  var items = slice.call(arguments);
+	  if (items.length > 2) {
+	    var reactive = this[REACTIVE$1];
+	    var index = items[0];
+	    var length = items[1];
+	    items = items.map(reactive);
+	    items.shift(index, length);
+	  }
+	  var s = this[SIGNAL];
+	  s.set(!s.get());
+	  return splice.apply(this, arguments);
+	};
+	var allprops = ['at', 'map', 'filter', 'concat', 'push', 'unshift', 'pop', 'shift', 'splice'];
+	function array(arr, reactive) {
+	  var i = arr.length;
+	  var r = new Array(i);
+	  r[SIGNAL] = new Signal(false);
+	  r[REACTIVE$1] = reactive;
+	  while (i-- > 0) {
+	    r[i] = reactive(arr[i], i);
+	  }
+	  allprops.forEach(setMethod, r);
+	  return r;
+	}
+	function setMethod(key) {
+	  this[key] = prototype[key];
+	}
 	var seq = 0;
 	var TARGET = '@@TARGET';
 	var REACTIVE = '@@REACTIVE';

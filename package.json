@@ -1,6 +1,6 @@
 {
 	"name": "sky-reactivity",
-	"version": "0.4.4",
+	"version": "0.4.5",
 	"description": "a reactivity system to automatically update the view when the state changes.",
 	"module": "dist/sky-reactivity.proxy.esnext.mjs",
 	"typings": "dist/types/sky-reactivity.proxy.d.ts",

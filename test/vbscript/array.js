@@ -5,7 +5,7 @@ QUnit.test('array#length', function(assert) {
 	var array = reactive([]);
 	assert.equal(array.length, 0);
 	assert.ok(array instanceof Array);
-	// assert.ok(Array.isArray(array));
+	assert.ok(Array.isArray(array));
 });
 QUnit.test('array#at', function(assert) {
 	var array = reactive([]);
