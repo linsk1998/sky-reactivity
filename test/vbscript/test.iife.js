@@ -843,17 +843,19 @@
 	    var reactive = this[REACTIVE$1];
 	    var items = slice.call(arguments);
 	    items = items.map(reactive);
+	    var r = fn.apply(this, items);
 	    var s = this[SIGNAL];
 	    s.set(!s.get());
-	    return fn.apply(this, items);
+	    return r;
 	  };
 	});
 	['pop', 'shift'].forEach(function (key) {
 	  var fn = Array.prototype[key];
 	  prototype[key] = function () {
+	    var r = fn.apply(this, arguments);
 	    var s = this[SIGNAL];
 	    s.set(!s.get());
-	    return fn.apply(this, arguments);
+	    return r;
 	  };
 	});
 	var splice = Array.prototype.splice;
@@ -866,9 +868,10 @@
 	    items = items.map(reactive);
 	    items.shift(index, length);
 	  }
+	  var r = splice.apply(this, arguments);
 	  var s = this[SIGNAL];
 	  s.set(!s.get());
-	  return splice.apply(this, arguments);
+	  return r;
 	};
 	var allprops = ['at', 'map', 'filter', 'concat', 'push', 'unshift', 'pop', 'shift', 'splice'];
 	function array(arr, reactive) {
