@@ -1,5 +1,3 @@
-import { notify } from "./notify";
-
 export var deep = 0;
 export var actionsToDo = new Map<any, Function>();
 
@@ -17,17 +15,27 @@ export function batch(fn: Function) {
 export function batchStart() {
 	deep++;
 }
+
 export function batchEnd() {
 	if(deep === 1) {
-		try {
-			actionsToDo.forEach(notify);
-		} catch(e) {
-			console.error(e);
-		} finally {
-			actionsToDo.clear();
-		}
+		actionsToDo.forEach(notifyAndRemove);
 	}
 	deep--;
+	if(deep === 0) {
+		actionsToDo.forEach(notifyAndRemove);
+	}
+}
+
+function notifyAndRemove(callback: Function, key: any, map: Map<any, Function>) {
+	try {
+		callback.call(key);
+	}
+	catch(e) {
+		console.error(e);
+	}
+	finally {
+		map.delete(key);
+	}
 }
 
 export function collectCallback(callback: Function, key: any) {

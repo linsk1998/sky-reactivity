@@ -5,7 +5,12 @@ var slice = Array.prototype.slice;
 
 var prototype = Object.create(Array.prototype);
 
-['at', 'map', 'filter', 'concat'].forEach(function(key) {
+var at = Array.prototype.at;
+prototype.at = function() {
+	this[SIGNAL].get();
+	return at.apply(this, arguments);
+};
+['map', 'filter', 'concat'].forEach(function(key) {
 	var fn = Array.prototype[key];
 	prototype[key] = function() {
 		this[SIGNAL].get();

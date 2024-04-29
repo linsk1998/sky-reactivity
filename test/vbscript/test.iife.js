@@ -635,9 +635,6 @@
 	  _setPrototypeOf(subClass, superClass);
 	}
 
-	function _notify(callback, key) {
-	  callback.call(key);
-	}
 	var deep = 0;
 	var actionsToDo = new Map();
 	function batchStart() {
@@ -645,18 +642,27 @@
 	}
 	function batchEnd() {
 	  if (deep === 1) {
-	    try {
-	      actionsToDo.forEach(_notify);
-	    } catch (e) {
-	      console.error(e);
-	    } finally {
-	      actionsToDo.clear();
-	    }
+	    actionsToDo.forEach(notifyAndRemove);
 	  }
 	  deep--;
+	  if (deep === 0) {
+	    actionsToDo.forEach(notifyAndRemove);
+	  }
+	}
+	function notifyAndRemove(callback, key, map) {
+	  try {
+	    callback.call(key);
+	  } catch (e) {
+	    console.error(e);
+	  } finally {
+	    map["delete"](key);
+	  }
 	}
 	function collectCallback(callback, key) {
 	  actionsToDo.set(key, callback);
+	}
+	function _notify(callback, key) {
+	  callback.call(key);
 	}
 	var relation = new WeakMap();
 	function stop(key) {
@@ -830,7 +836,12 @@
 	var REACTIVE$1 = '@@REACTIVE';
 	var slice = Array.prototype.slice;
 	var prototype = Object.create(Array.prototype);
-	['at', 'map', 'filter', 'concat'].forEach(function (key) {
+	var at = Array.prototype.at;
+	prototype.at = function () {
+	  this[SIGNAL].get();
+	  return at.apply(this, arguments);
+	};
+	['map', 'filter', 'concat'].forEach(function (key) {
 	  var fn = Array.prototype[key];
 	  prototype[key] = function () {
 	    this[SIGNAL].get();
